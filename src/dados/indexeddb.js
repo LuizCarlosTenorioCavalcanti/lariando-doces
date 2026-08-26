@@ -78,8 +78,15 @@ export async function naGavetas(gavetas, modo, fn) {
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(gavetas, modo)
-      tx.onerror = () => reject(tx.error)
-      tx.onabort = () => reject(tx.error)
+      // Pela spec do IndexedDB, `transaction.error` só é preenchido no passo de ABORT —
+      // que roda DEPOIS do evento `error` ser disparado. Ler `tx.error` aqui dentro do
+      // `onerror` pega `null` quase sempre; o erro de verdade (ex.: `ConstraintError` de
+      // índice único) está em `ev.target.error`, o request que falhou.
+      tx.onerror = (ev) => reject(ev.target?.error ?? tx.error)
+      // Defesa extra: se o abort chegar sem `tx.error` preenchido (ordem de eventos que a
+      // spec não garante em todo motor), rejeitar com `null` deixaria quem chama fazendo
+      // `catch (e) { ... e.message ... }` em cima de `null` — `TypeError` calado, tela muda.
+      tx.onabort = () => reject(tx.error ?? new Error('A gravação foi cancelada.'))
       tx.oncomplete = () => resolve()
       fn(tx)
     })

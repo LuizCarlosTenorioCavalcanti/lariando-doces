@@ -238,13 +238,29 @@ describe('importar', () => {
 
   it('colisão de índice único durante a importação não deixa a gaveta pela metade', async () => {
     await semear()
-    await expect(importar({
-      versao: 1, receitas: [], producoes: [],
-      ingredientes: [
-        { id: 'ing_a', nome: 'Fermento', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
-        { id: 'ing_b', nome: 'Fermento 2', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
-      ],
-    })).rejects.toThrow()
+
+    // Não usa `.rejects.toThrow()` sem argumento: essa forma passa mesmo se a promessa
+    // rejeitar com `null` — e é exatamente isso que `tx.onerror` devolvia antes da
+    // correção (a spec só preenche `transaction.error` no passo de abort, que roda DEPOIS
+    // do evento `error`). `FolhaAjustes.jsx` faz `catch (e) { setErro(e.message) }`, e
+    // `null.message` é `TypeError` calado — a tela fica muda. Por isso a prova aqui exige
+    // um rejeito de verdade, com mensagem — não checa `instanceof Error` porque o valor
+    // real é um `DOMException` (`ConstraintError`), que neste ambiente não estende `Error`.
+    let erro = null
+    try {
+      await importar({
+        versao: 1, receitas: [], producoes: [],
+        ingredientes: [
+          { id: 'ing_a', nome: 'Fermento', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
+          { id: 'ing_b', nome: 'Fermento 2', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
+        ],
+      })
+    } catch (e) {
+      erro = e
+    }
+    expect(erro).toBeTruthy()
+    expect(typeof erro.message).toBe('string')
+    expect(erro.message.length).toBeGreaterThan(0)
 
     const ingredientes = await listarIngredientes()
     expect(ingredientes).toHaveLength(1)
