@@ -1,0 +1,65 @@
+.folha-fundo {
+  position: fixed;
+  inset: 0;
+  background: rgba(58, 32, 40, .35);
+  display: flex;
+  align-items: flex-end;
+  z-index: 20;
+  animation: folha-fundo-entra var(--t-media);
+}
+
+.folha {
+  background: var(--card);
+  width: 100%;
+  max-height: 92dvh;
+  border-radius: var(--raio-lg) var(--raio-lg) 0 0;
+  box-shadow: var(--e3);
+  display: flex;
+  flex-direction: column;
+  animation: folha-sobe var(--t-media);
+}
+
+.folha-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.folha-topo h2 { font-size: 1.1rem; }
+
+.folha-fechar {
+  border: 0;
+  background: var(--marca-clara);
+  color: var(--marca);
+  /* 44px é o alvo mínimo confortável para o dedo; abaixo disso ela erra e fecha o que não
+     queria, ou não fecha o que queria. */
+  width: 44px;
+  height: 44px;
+  border-radius: var(--raio-pilula);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.folha-corpo {
+  padding: 16px 18px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@keyframes folha-sobe {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes folha-fundo-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Quem pediu menos movimento no sistema não deve receber a folha deslizando. */
+@media (prefers-reduced-motion: reduce) {
+  .folha, .folha-fundo { animation: none; }
+}
