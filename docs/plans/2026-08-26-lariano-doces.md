@@ -123,8 +123,10 @@ fi
 
 - [ ] **Step 6: Verificar o READI**
 
-Run: `git -C "READI" log --format='%ae' --all | sort -u`
+Run: `git -C "READI" log --format='%ae' --not --glob=refs/original | sort -u`
 Expected: uma linha só, `luizctcfilho@gmail.com`. Se `infor.ia@grupodeltapb.com.br` ainda aparecer, o filtro não pegou — não siga para o próximo repo.
+
+O `--not --glob=refs/original` não é firula: o `filter-branch` deixa o histórico ANTIGO inteiro em `refs/original`, e um `--all` cru logo depois enxerga os dois e mostra os dois e-mails. Verificar com `--all` aqui daria alarme falso e mandaria parar uma reescrita que deu certo. O `--all` volta a valer no Step 8, depois que essas refs forem apagadas.
 
 Run: `git -C "READI" log --oneline --all | wc -l`
 Expected: 135 (o mesmo total de antes; reescrever autor não apaga commit).
