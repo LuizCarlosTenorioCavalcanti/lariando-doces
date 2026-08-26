@@ -1,0 +1,43 @@
+.campo { margin-bottom: 16px; }
+
+.campo-rotulo {
+  display: block;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--texto-medio);
+  margin-bottom: 6px;
+}
+
+.campo-caixa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 0 14px;
+  transition: border-color var(--t-rapida);
+}
+
+.campo-caixa:focus-within { border-color: var(--marca); }
+
+.campo-caixa input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 14px 0;
+}
+
+.campo-fixo {
+  color: var(--texto-suave);
+  font-weight: 600;
+  flex: none;
+}
+
+.campo-dica {
+  margin: 6px 0 0;
+  font-size: .82rem;
+  color: var(--texto-suave);
+}
