@@ -1,15 +1,20 @@
 import { useCallback, useState } from 'react'
 import { useDados } from './dados/useDados'
+import { FolhaDoces } from './paginas/FolhaDoces'
+import { FolhaEditarDoce } from './paginas/FolhaEditarDoce'
 import './styles/app.css'
 
 export default function App() {
   const dados = useDados()
   const [folha, setFolha] = useState(null)
+  const [receitaEditando, setReceitaEditando] = useState(null)
 
   const semDoce = !dados.carregando && dados.receitas.length === 0
 
   const abrirAjustes = useCallback(() => setFolha('ajustes'), [])
-  const abrirNovo = useCallback(() => setFolha('novo'), [])
+  const abrirNovo = useCallback(() => { setReceitaEditando(null); setFolha('novo') }, [])
+  const fecharFolha = useCallback(() => setFolha(null), [])
+  const escolherReceita = useCallback((r) => { setReceitaEditando(r); setFolha('editar') }, [])
 
   return (
     <div className="app">
@@ -39,6 +44,27 @@ export default function App() {
           </section>
         ) : null}
       </main>
+
+      <FolhaDoces
+        aberta={folha === 'doces'}
+        receitas={dados.receitas}
+        aoFechar={fecharFolha}
+        aoEscolher={escolherReceita}
+        aoNovo={abrirNovo}
+      />
+
+      {folha === 'editar' || folha === 'novo' ? (
+        <FolhaEditarDoce
+          // A chave é o que remonta o formulário ao trocar de doce. Sem ela, abrir o
+          // beijinho depois do brigadeiro mostraria os campos do brigadeiro.
+          key={receitaEditando?.id ?? 'novo'}
+          aberta
+          receita={folha === 'novo' ? null : receitaEditando}
+          ingredientes={dados.ingredientes}
+          aoFechar={fecharFolha}
+          aoGravado={dados.recarregar}
+        />
+      ) : null}
     </div>
   )
 }
