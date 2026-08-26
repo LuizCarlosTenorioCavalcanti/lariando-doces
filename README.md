@@ -3,6 +3,9 @@
 Calculadora de custo de fabricação de doces. Uma tela: escolhe o doce, diz quantas rendeu,
 vê quanto custou — total, por unidade e preço de venda sugerido.
 
+Publicado em <https://luizcarlostenoriocavalcanti.github.io/lariando-doces/>. O site carrega
+`noindex` de propósito — não aparece em busca.
+
 ## Rodar
 
     npm install

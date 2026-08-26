@@ -23,8 +23,13 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
       const a = document.createElement('a')
       a.href = url
       a.download = `lariando-doces-${dados.exportadoEm}.json`
+      // Vários navegadores de celular só disparam o download se o link estiver DE FATO na
+      // página, e cancelam se `revokeObjectURL` rodar antes de o download começar — por
+      // isso ele entra no corpo antes do clique, sai depois, e a revogação espera um pouco.
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       setRecado('Backup salvo. Guarde esse arquivo fora do celular.')
     } catch (e) {
       setErro(e.message)

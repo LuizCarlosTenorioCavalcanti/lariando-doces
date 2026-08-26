@@ -24,10 +24,17 @@ self.addEventListener('fetch', (evento) => {
   evento.respondWith(
     fetch(evento.request)
       .then((resposta) => {
-        const copia = resposta.clone()
-        caches.open(CACHE).then((c) => c.put(evento.request, copia))
+        // Só guarda resposta de verdade (200) — um 404 ou 500 em cache viraria a resposta
+        // "de sucesso" para toda visita offline seguinte.
+        if (resposta.ok) {
+          const copia = resposta.clone()
+          caches.open(CACHE).then((c) => c.put(evento.request, copia))
+        }
         return resposta
       })
-      .catch(() => caches.match(evento.request)),
+      // Sem entrada exata no cache (ex.: rota nova, sem internet na primeira visita),
+      // `'./'` cai na casca do app — resolve contra o escopo do service worker — em vez de
+      // devolver nada e a navegação offline não abrir de jeito nenhum.
+      .catch(() => caches.match(evento.request).then((r) => r ?? caches.match('./'))),
   )
 })
