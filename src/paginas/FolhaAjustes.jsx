@@ -7,9 +7,14 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
   const [erro, setErro] = useState(null)
   const [recado, setRecado] = useState(null)
   const [pendente, setPendente] = useState(null)
+  // Cobre tanto exportar quanto importar: os dois mexem nas gavetas em algum grau, e um
+  // clique duplo em qualquer um deles enquanto o outro está em voo é a mesma classe de
+  // problema — por isso um único booleano trava os três botões e o input de arquivo.
+  const [salvando, setSalvando] = useState(false)
 
   async function baixar() {
     setErro(null)
+    setSalvando(true)
     try {
       const dados = await exportar()
       const url = URL.createObjectURL(
@@ -23,6 +28,8 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
       setRecado('Backup salvo. Guarde esse arquivo fora do celular.')
     } catch (e) {
       setErro(e.message)
+    } finally {
+      setSalvando(false)
     }
   }
 
@@ -54,6 +61,7 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
 
   async function confirmar() {
     setErro(null)
+    setSalvando(true)
     try {
       const contagem = await importar(pendente)
       setPendente(null)
@@ -61,6 +69,8 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
       await aoGravado()
     } catch (e) {
       setErro(e.message)
+    } finally {
+      setSalvando(false)
     }
   }
 
@@ -77,7 +87,7 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
         aparelho, some tudo — por isso o backup existe.
       </p>
 
-      <button type="button" className="botao-principal" onClick={baixar}>
+      <button type="button" className="botao-principal" onClick={baixar} disabled={salvando}>
         Salvar backup em arquivo
       </button>
 
@@ -85,7 +95,13 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
         <label className="campo-rotulo" htmlFor="arquivo-backup">
           Escolher arquivo de backup
         </label>
-        <input id="arquivo-backup" type="file" accept="application/json,.json" onChange={escolher} />
+        <input
+          id="arquivo-backup"
+          type="file"
+          accept="application/json,.json"
+          onChange={escolher}
+          disabled={salvando}
+        />
       </div>
 
       {pendente ? (
@@ -95,10 +111,15 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
             {`O arquivo traz ${conta.ingredientes} ingredientes, ${conta.receitas} doces e ${conta.producoes} produções, e substitui tudo o que está no aparelho.`}
           </p>
           <div className="cadastro-botoes">
-            <button type="button" className="botao-secundario" onClick={() => setPendente(null)}>
+            <button
+              type="button"
+              className="botao-secundario"
+              onClick={() => setPendente(null)}
+              disabled={salvando}
+            >
               Cancelar
             </button>
-            <button type="button" className="botao-principal" onClick={confirmar}>
+            <button type="button" className="botao-principal" onClick={confirmar} disabled={salvando}>
               Substituir tudo
             </button>
           </div>
