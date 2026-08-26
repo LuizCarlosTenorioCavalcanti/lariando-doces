@@ -6,7 +6,7 @@ export function formatBRL(centavos) {
     .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     // O Intl separa `R$` do número com espaço estreito (U+00A0). Trocar por espaço comum
     // é o que deixa o teste comparável e o copiar-e-colar limpo.
-    .replace(/ /g, ' ')
+    .replace(/\u00a0/g, ' ')
 }
 
 /** `40, 'g'` → `40 g`. Decimal com vírgula e sem zero pendurado no fim. */
