@@ -70,3 +70,55 @@ export function custoDaProducao({ receita, ingredientesPorId, receitasFeitas, re
     semPreco,
   }
 }
+
+/** Preço de venda a partir do custo unitário JÁ ARREDONDADO.
+ *  A ordem importa: é assim que `0,65 × 3 = 1,95` fecha a olho na tela. */
+export function precoSugerido(custoUnitarioCent, margemPct) {
+  if (custoUnitarioCent === null || custoUnitarioCent === undefined) return null
+  if (!Number.isFinite(custoUnitarioCent)) return null
+
+  const margem = Number(margemPct)
+  if (margemPct === null || margemPct === undefined || !Number.isFinite(margem)) return null
+
+  return Math.round(custoUnitarioCent * (1 + margem / 100))
+}
+
+/** Lucro da fornada inteira. */
+export function lucroDaProducao(custoUnitarioCent, precoCent, rendimento) {
+  if (custoUnitarioCent === null || precoCent === null) return null
+  if (!Number.isFinite(custoUnitarioCent) || !Number.isFinite(precoCent)) return null
+
+  const rend = Number(rendimento)
+  if (!Number.isFinite(rend) || rend <= 0) return null
+
+  return Math.round((precoCent - custoUnitarioCent) * rend)
+}
+
+/** Quanto o rendimento pode fugir do normal antes de virar suspeita. Enrolar maior ou
+ *  menor muda o rendimento em 10~20% num dia qualquer; 40% já não é a mão, é o dedo. */
+export const TOLERANCIA_RENDIMENTO = 0.4
+
+/** `true` quando o rendimento por receita foge demais do normal daquele doce.
+ *
+ *  Avisa, não bloqueia — ela pode ter feito bolinha de festa infantil, bem menor. O aviso
+ *  existe porque precificar em cima de um custo errado só aparece no fim do mês, quando o
+ *  doce já foi vendido barato a semana inteira.
+ *
+ *  Na primeira produção do doce não há com o que comparar, e um alarme sem referência é
+ *  ruído que ensina a ignorar o alarme. */
+export function rendimentoSuspeito({
+  rendimento, receitasFeitas, rendimentoBase, temProducaoAnterior,
+}) {
+  if (!temProducaoAnterior) return false
+
+  const rend = Number(rendimento)
+  const nReceitas = Number(receitasFeitas)
+  const base = Number(rendimentoBase)
+
+  if (!Number.isFinite(rend) || rend <= 0) return false
+  if (!Number.isFinite(nReceitas) || nReceitas <= 0) return false
+  if (!Number.isFinite(base) || base <= 0) return false
+
+  const porReceita = rend / nReceitas
+  return Math.abs(porReceita - base) / base > TOLERANCIA_RENDIMENTO
+}

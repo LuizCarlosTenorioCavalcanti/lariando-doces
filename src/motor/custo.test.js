@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { custoDoItem, custoDaReceita, custoDaProducao } from './custo'
+import {
+  custoDoItem, custoDaReceita, custoDaProducao,
+  precoSugerido, lucroDaProducao, rendimentoSuspeito,
+} from './custo'
 
 const ing = (id, nome, unidade, embalagemQtd, embalagemPrecoCent) =>
   ({ id, nome, unidade, embalagemQtd, embalagemPrecoCent })
@@ -174,5 +177,83 @@ describe('custoDaProducao', () => {
     })
     expect(Number.isInteger(r.custoTotalCent)).toBe(true)
     expect(Number.isInteger(r.custoUnitarioCent)).toBe(true)
+  })
+})
+
+describe('precoSugerido', () => {
+  it('aplica a margem sobre o custo unitário', () => {
+    expect(precoSugerido(65, 200)).toBe(195)
+  })
+
+  it('margem zero devolve o próprio custo', () => {
+    expect(precoSugerido(65, 0)).toBe(65)
+  })
+
+  it('fecha a olho com o que a tela mostra', () => {
+    // O teste que existe por causa da usuária, não do código: ela vai conferir 0,65 × 3.
+    const cada = 65
+    expect(precoSugerido(cada, 200)).toBe(cada * 3)
+  })
+
+  it('sem custo ou sem margem, não há preço', () => {
+    expect(precoSugerido(null, 200)).toBe(null)
+    expect(precoSugerido(65, null)).toBe(null)
+    expect(precoSugerido(65, undefined)).toBe(null)
+    expect(precoSugerido(65, 'abc')).toBe(null)
+  })
+})
+
+describe('lucroDaProducao', () => {
+  it('multiplica a diferença pelo que rendeu', () => {
+    expect(lucroDaProducao(65, 195, 50)).toBe(6500)
+  })
+
+  it('sem preço, sem lucro', () => {
+    expect(lucroDaProducao(65, null, 50)).toBe(null)
+    expect(lucroDaProducao(null, 195, 50)).toBe(null)
+  })
+
+  it('rendimento zero devolve null', () => {
+    expect(lucroDaProducao(65, 195, 0)).toBe(null)
+  })
+})
+
+describe('rendimentoSuspeito', () => {
+  const base = { rendimentoBase: 50, temProducaoAnterior: true }
+
+  it('rendimento normal não avisa', () => {
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 1, rendimento: 50 })).toBe(false)
+  })
+
+  it('variação pequena não avisa — enrolar maior ou menor é rotina', () => {
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 1, rendimento: 60 })).toBe(false)
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 1, rendimento: 42 })).toBe(false)
+  })
+
+  it('avisa quando rende muito acima do normal', () => {
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 1, rendimento: 80 })).toBe(true)
+  })
+
+  it('avisa quando rende muito abaixo do normal', () => {
+    // Duas receitas rendendo 20: dez por receita, contra 50 de sempre. Dedo errado.
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 2, rendimento: 20 })).toBe(true)
+  })
+
+  it('compara por receita, não no total — 2 receitas rendendo 100 é normal', () => {
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 2, rendimento: 100 })).toBe(false)
+  })
+
+  it('na primeira produção do doce nunca avisa: não há "de sempre"', () => {
+    expect(rendimentoSuspeito({
+      rendimentoBase: 50, temProducaoAnterior: false, receitasFeitas: 1, rendimento: 200,
+    })).toBe(false)
+  })
+
+  it('sem número que dê para comparar, não avisa', () => {
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 1, rendimento: '' })).toBe(false)
+    expect(rendimentoSuspeito({ ...base, receitasFeitas: 0, rendimento: 50 })).toBe(false)
+    expect(rendimentoSuspeito({
+      rendimentoBase: 0, temProducaoAnterior: true, receitasFeitas: 1, rendimento: 50,
+    })).toBe(false)
   })
 })
