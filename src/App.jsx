@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useDados } from './dados/useDados'
 import { Calculadora } from './paginas/Calculadora'
+import { FolhaAjustes } from './paginas/FolhaAjustes'
 import { FolhaDoces } from './paginas/FolhaDoces'
 import { FolhaEditarDoce } from './paginas/FolhaEditarDoce'
 import { FolhaHistorico } from './paginas/FolhaHistorico'
@@ -60,6 +61,12 @@ export default function App() {
           />
         ) : null}
       </main>
+
+      <FolhaAjustes
+        aberta={folha === 'ajustes'}
+        aoFechar={fecharFolha}
+        aoGravado={dados.recarregar}
+      />
 
       <FolhaDoces
         aberta={folha === 'doces'}
