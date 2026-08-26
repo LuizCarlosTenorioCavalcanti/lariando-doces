@@ -68,6 +68,14 @@ describe('custoDoItem', () => {
   it('devolve null quando a quantidade não é número', () => {
     expect(custoDoItem({ quantidade: 'abc' }, TODDY)).toBe(null)
   })
+
+  it('devolve null para quantidade negativa — dedo errado não pode baratear o doce', () => {
+    expect(custoDoItem({ quantidade: -50 }, TODDY)).toBe(null)
+  })
+
+  it('quantidade zero é legítima e custa zero de verdade, não null', () => {
+    expect(custoDoItem({ quantidade: 0 }, TODDY)).toBe(0)
+  })
 })
 
 describe('custoDaReceita', () => {

@@ -8,8 +8,11 @@
 /** Custo de um item da receita, em centavos.
  *
  *  `null` quando não dá para saber — ingrediente sem preço, ingrediente apagado,
- *  embalagem zerada. Nunca `0`: zero é uma afirmação ("isto é de graça") e some na soma
- *  sem deixar rastro, que é o jeito mais curto de ela precificar abaixo do custo. */
+ *  embalagem zerada, quantidade não numérica ou quantidade negativa. Quantidade negativa
+ *  não existe no mundo (não se usa "menos vinte gramas" de manteiga): é dedo errado no
+ *  campo, e dedo errado não pode baratear o doce. Nunca `0` num caso de erro: zero é uma
+ *  afirmação ("isto é de graça") e some na soma sem deixar rastro, que é o jeito mais curto
+ *  de ela precificar abaixo do custo. */
 export function custoDoItem(item, ingrediente) {
   if (!ingrediente) return null
 
@@ -19,7 +22,7 @@ export function custoDoItem(item, ingrediente) {
   if (!Number.isFinite(embalagemQtd) || embalagemQtd <= 0) return null
 
   const quantidade = Number(item?.quantidade)
-  if (!Number.isFinite(quantidade)) return null
+  if (!Number.isFinite(quantidade) || quantidade < 0) return null
 
   return (quantidade / embalagemQtd) * embalagemPrecoCent
 }
