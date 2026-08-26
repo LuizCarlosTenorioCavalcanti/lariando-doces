@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useDados } from './dados/useDados'
 import { FolhaDoces } from './paginas/FolhaDoces'
 import { FolhaEditarDoce } from './paginas/FolhaEditarDoce'
+import { FolhaIngredientes } from './paginas/FolhaIngredientes'
 import './styles/app.css'
 
 export default function App() {
@@ -65,6 +66,13 @@ export default function App() {
           aoGravado={dados.recarregar}
         />
       ) : null}
+
+      <FolhaIngredientes
+        aberta={folha === 'ingredientes'}
+        ingredientes={dados.ingredientes}
+        aoFechar={fecharFolha}
+        aoGravado={dados.recarregar}
+      />
     </div>
   )
 }

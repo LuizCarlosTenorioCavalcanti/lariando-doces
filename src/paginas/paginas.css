@@ -74,3 +74,10 @@
 .lista-item-nome { font-weight: 650; }
 .lista-item-detalhe { font-size: .85rem; color: var(--texto-suave); }
 .lista-vazia { color: var(--texto-suave); margin: 0 0 18px; }
+
+.editar-preco {
+  background: var(--marca-clara);
+  border-radius: var(--raio);
+  padding: 14px 14px 4px;
+  margin: -4px 0 12px;
+}
