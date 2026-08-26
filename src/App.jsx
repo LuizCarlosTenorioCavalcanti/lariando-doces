@@ -3,6 +3,7 @@ import { useDados } from './dados/useDados'
 import { Calculadora } from './paginas/Calculadora'
 import { FolhaDoces } from './paginas/FolhaDoces'
 import { FolhaEditarDoce } from './paginas/FolhaEditarDoce'
+import { FolhaHistorico } from './paginas/FolhaHistorico'
 import { FolhaIngredientes } from './paginas/FolhaIngredientes'
 import './styles/app.css'
 
@@ -84,6 +85,13 @@ export default function App() {
       <FolhaIngredientes
         aberta={folha === 'ingredientes'}
         ingredientes={dados.ingredientes}
+        aoFechar={fecharFolha}
+        aoGravado={dados.recarregar}
+      />
+
+      <FolhaHistorico
+        aberta={folha === 'historico'}
+        producoes={dados.producoes}
         aoFechar={fecharFolha}
         aoGravado={dados.recarregar}
       />
