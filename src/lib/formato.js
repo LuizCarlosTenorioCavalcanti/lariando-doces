@@ -25,3 +25,15 @@ export function formatarDataBR(iso) {
   if (!ano || !mes || !dia || ano.length !== 4) return '—'
   return `${dia}/${mes}/${ano}`
 }
+
+/** Data de hoje no fuso DELA, em `YYYY-MM-DD`.
+ *
+ *  `toISOString()` devolve UTC: em Brasília, tudo que ela salva depois das 21h receberia
+ *  a data de amanhã — e ela faz doce à noite. O histórico existe para mostrar o custo por
+ *  data; carimbar o dia errado tira o sentido dele. */
+export function hojeLocal() {
+  const d = new Date()
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dia}`
+}

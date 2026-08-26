@@ -6,6 +6,7 @@
 
 import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, naGaveta } from './indexeddb'
 import { normalizar } from '../lib/texto'
+import { hojeLocal } from '../lib/formato'
 
 const UNIDADES = ['g', 'ml', 'un']
 
@@ -13,14 +14,17 @@ function novoId(prefixo) {
   return `${prefixo}_${crypto.randomUUID()}`
 }
 
-function hoje() {
-  return new Date().toISOString().slice(0, 10)
+// Defesa em profundidade: `salvarIngrediente`/`salvarReceita` sempre preenchem
+// `nomeNormalizado`, mas se um registro sem esse campo escapar por outro caminho (ex.: um
+// backup malformado que passou pela validação), `String(... ?? '')` evita que o app inteiro
+// pare de abrir por um `TypeError` no `.sort()` — o registro ruim só aparece sem nome.
+function porNomeNormalizado(a, b) {
+  return String(a.nomeNormalizado ?? '').localeCompare(String(b.nomeNormalizado ?? ''), 'pt-BR')
 }
 
 export function listarIngredientes() {
   return naGaveta(GAVETA_INGREDIENTES, 'readonly', (g) => g.getAll())
-    .then((linhas) => (linhas || [])
-      .sort((a, b) => a.nomeNormalizado.localeCompare(b.nomeNormalizado, 'pt-BR')))
+    .then((linhas) => (linhas || []).sort(porNomeNormalizado))
 }
 
 /** Sem `id`, cria. Com `id`, edita.
@@ -67,7 +71,7 @@ export async function salvarIngrediente(dados, id) {
     unidade: dados.unidade,
     embalagemQtd,
     embalagemPrecoCent,
-    atualizadoEm: precoMudou ? hoje() : anterior.atualizadoEm,
+    atualizadoEm: precoMudou ? hojeLocal() : anterior.atualizadoEm,
   }
 
   await naGaveta(GAVETA_INGREDIENTES, 'readwrite', (g) => g.put(registro))
@@ -86,8 +90,7 @@ export async function apagarIngrediente(id) {
 
 export function listarReceitas() {
   return naGaveta(GAVETA_RECEITAS, 'readonly', (g) => g.getAll())
-    .then((linhas) => (linhas || [])
-      .sort((a, b) => a.nomeNormalizado.localeCompare(b.nomeNormalizado, 'pt-BR')))
+    .then((linhas) => (linhas || []).sort(porNomeNormalizado))
 }
 
 /** Sem `id`, cria. Com `id`, edita preservando `criadoEm`.
@@ -147,7 +150,7 @@ export async function salvarReceita(dados, id) {
     rendimentoBase,
     margemPct,
     itens,
-    criadoEm: anterior?.criadoEm ?? hoje(),
+    criadoEm: anterior?.criadoEm ?? hojeLocal(),
   }
 
   await naGaveta(GAVETA_RECEITAS, 'readwrite', (g) => g.put(registro))
@@ -211,7 +214,7 @@ export async function salvarProducao(dados) {
     custoTotalCent,
     custoUnitarioCent,
     parcial: Boolean(dados.parcial),
-    data: hoje(),
+    data: hojeLocal(),
     criadoEm: agora(),
   }
 

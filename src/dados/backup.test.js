@@ -72,6 +72,30 @@ describe('validarBackup', () => {
     const r = validarBackup({ versao: 1, ingredientes: {}, receitas: [], producoes: [] })
     expect(r.ok).toBe(false)
   })
+
+  it('recusa registro sem id, dizendo o motivo', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [{ nomeNormalizado: 'toddy' }], receitas: [], producoes: [],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/id/i)
+  })
+
+  it('recusa ingrediente sem nome interno', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [{ id: 'ing_1' }], receitas: [], producoes: [],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/nome/i)
+  })
+
+  it('recusa receita sem nome interno', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [{ id: 'rec_1' }], producoes: [],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/nome/i)
+  })
 })
 
 describe('resumo', () => {
@@ -110,6 +134,39 @@ describe('importar', () => {
     await semear()
     const b = await exportar()
     expect(await importar(b)).toEqual({ ingredientes: 1, receitas: 1, producoes: 1 })
+  })
+
+  it('registro sem id não destrói o que já estava salvo', async () => {
+    await semear()
+    await expect(importar({
+      versao: 1, ingredientes: [{ nomeNormalizado: 'x' }], receitas: [], producoes: [],
+    })).rejects.toThrow(/id/i)
+
+    expect(await listarIngredientes()).toHaveLength(1)
+    expect(await listarReceitas()).toHaveLength(1)
+    expect(await listarProducoes()).toHaveLength(1)
+  })
+
+  it('ingrediente sem nome interno não destrói o que já estava salvo', async () => {
+    await semear()
+    await expect(importar({
+      versao: 1, ingredientes: [{ id: 'ing_x' }], receitas: [], producoes: [],
+    })).rejects.toThrow(/nome/i)
+
+    expect(await listarIngredientes()).toHaveLength(1)
+    expect(await listarReceitas()).toHaveLength(1)
+    expect(await listarProducoes()).toHaveLength(1)
+  })
+
+  it('receita sem nome interno não destrói o que já estava salvo', async () => {
+    await semear()
+    await expect(importar({
+      versao: 1, ingredientes: [], receitas: [{ id: 'rec_x' }], producoes: [],
+    })).rejects.toThrow(/nome/i)
+
+    expect(await listarIngredientes()).toHaveLength(1)
+    expect(await listarReceitas()).toHaveLength(1)
+    expect(await listarProducoes()).toHaveLength(1)
   })
 
   it('arquivo inválido não destrói o que já estava salvo', async () => {

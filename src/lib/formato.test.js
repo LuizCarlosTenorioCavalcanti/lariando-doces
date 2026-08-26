@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { formatBRL, formatarQuantidade, formatarDataBR } from './formato'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { formatBRL, formatarQuantidade, formatarDataBR, hojeLocal } from './formato'
 
 describe('formatBRL', () => {
   it('mostra centavos como moeda brasileira', () => {
@@ -50,5 +50,19 @@ describe('formatarDataBR', () => {
     expect(formatarDataBR('')).toBe('—')
     expect(formatarDataBR(null)).toBe('—')
     expect(formatarDataBR('abc')).toBe('—')
+  })
+})
+
+describe('hojeLocal', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('usa o dia local, não o dia UTC — ela faz doce à noite', () => {
+    // 26/08 22:30 em Brasília (UTC-3) é 27/08 01:30 em UTC. `toISOString()` devolveria o
+    // dia 27; o dia local, que é o que ela viveu, é 26.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-27T01:30:00.000Z'))
+    expect(hojeLocal()).toBe('2026-08-26')
   })
 })
