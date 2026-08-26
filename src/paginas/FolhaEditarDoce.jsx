@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Folha } from '../componentes/Folha'
 import { CampoNumero } from '../componentes/CampoNumero'
 import { CampoMoeda } from '../componentes/CampoMoeda'
-import { salvarReceita, salvarIngrediente } from '../dados/repositorio'
+import { salvarReceita, salvarIngrediente, apagarReceita } from '../dados/repositorio'
 import { paraNumero, paraCentavos } from '../lib/numeroBR'
 import { normalizar } from '../lib/texto'
 import { formatBRL } from '../lib/formato'
@@ -38,6 +38,10 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
   const [linhas, setLinhas] = useState(() => linhasIniciais(receita, ingredientes))
   const [erro, setErro] = useState(null)
   const [salvando, setSalvando] = useState(false)
+
+  // Confirmação embutida antes de apagar, mesmo padrão do "Substituir tudo" em
+  // FolhaAjustes: pergunta só depois de saber que a ação é possível, nunca antes.
+  const [confirmandoApagar, setConfirmandoApagar] = useState(false)
 
   // `cadastrando` guarda a CHAVE da linha que pediu o cadastro. É por ela que o formulário
   // embutido sabe em qual linha devolver o ingrediente recém-criado.
@@ -105,6 +109,21 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
     } catch (e) {
       setErro(e.message)
     } finally {
+      setSalvando(false)
+    }
+  }
+
+  /** Apagar é permitido mesmo com produção no histórico — a produção guarda o nome do doce
+   *  no próprio registro, então o histórico continua legível sem a receita. */
+  async function apagar() {
+    setErro(null)
+    setSalvando(true)
+    try {
+      await apagarReceita(receita.id)
+      await aoGravado()
+      aoFechar()
+    } catch (e) {
+      setErro(e.message)
       setSalvando(false)
     }
   }
@@ -244,6 +263,44 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
       >
         Salvar doce
       </button>
+
+      {receita ? (
+        confirmandoApagar ? (
+          <div className="cadastro-embutido">
+            <p className="cadastro-titulo">Apagar {receita.nome}?</p>
+            <p className="campo-dica">
+              O histórico de produções deste doce continua, com o custo de cada dia.
+            </p>
+            <div className="cadastro-botoes">
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => setConfirmandoApagar(false)}
+                disabled={salvando}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="botao-principal"
+                onClick={apagar}
+                disabled={salvando}
+              >
+                Apagar doce
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="botao-secundario"
+            onClick={() => setConfirmandoApagar(true)}
+            disabled={salvando}
+          >
+            Apagar doce
+          </button>
+        )
+      ) : null}
     </Folha>
   )
 }

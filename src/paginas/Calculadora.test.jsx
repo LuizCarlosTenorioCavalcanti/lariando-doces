@@ -39,6 +39,7 @@ function montar(props = {}) {
       ingredientesPorId={PORID}
       producoes={[]}
       aoAbrirDoces={() => {}}
+      aoAbrirIngredientes={() => {}}
       aoAbrirHistorico={() => {}}
       aoGravado={() => {}}
       {...props}

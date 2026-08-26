@@ -20,6 +20,7 @@ export default function App() {
   const fecharFolha = useCallback(() => setFolha(null), [])
   const escolherReceita = useCallback((r) => { setReceitaEditando(r); setFolha('editar') }, [])
   const abrirDoces = useCallback(() => setFolha('doces'), [])
+  const abrirIngredientes = useCallback(() => setFolha('ingredientes'), [])
   const abrirHistorico = useCallback(() => setFolha('historico'), [])
 
   return (
@@ -41,7 +42,7 @@ export default function App() {
       <main className="app-corpo">
         {dados.carregando ? <p className="app-carregando">carregando…</p> : null}
 
-        {semDoce ? (
+        {semDoce && !dados.erro ? (
           <section className="vazio">
             <p>Você ainda não cadastrou nenhum doce.</p>
             <button type="button" className="botao-principal" onClick={abrirNovo}>
@@ -56,6 +57,7 @@ export default function App() {
             ingredientesPorId={dados.ingredientesPorId}
             producoes={dados.producoes}
             aoAbrirDoces={abrirDoces}
+            aoAbrirIngredientes={abrirIngredientes}
             aoAbrirHistorico={abrirHistorico}
             aoGravado={dados.recarregar}
           />

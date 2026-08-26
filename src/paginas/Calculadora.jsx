@@ -9,7 +9,8 @@ import { formatBRL, formatarQuantidade } from '../lib/formato'
 import './calculadora.css'
 
 export function Calculadora({
-  receitas, ingredientesPorId, producoes, aoAbrirDoces, aoAbrirHistorico, aoGravado,
+  receitas, ingredientesPorId, producoes, aoAbrirDoces, aoAbrirIngredientes, aoAbrirHistorico,
+  aoGravado,
 }) {
   const [receitaId, setReceitaId] = useState('')
   const [receitasFeitas, setReceitasFeitas] = useState('1')
@@ -191,14 +192,16 @@ export function Calculadora({
 
       {mostrarDetalhe ? (
         <ul className="detalhe">
-          {receita.itens.map((item) => {
+          {receita.itens.map((item, indice) => {
             const ing = ingredientesPorId[item.ingredienteId]
             const custo = custoDoItem(item, ing)
             const cheio = ing
               ? `(${ing.embalagemQtd} ${ing.unidade} — ${formatBRL(ing.embalagemPrecoCent)})`
               : '(ingrediente apagado)'
             return (
-              <li key={item.ingredienteId}>
+              // `ingredienteId` pode se repetir na mesma receita (massa e cobertura usando
+              // o mesmo item) — o índice é o que garante chave única nesse caso.
+              <li key={`${item.ingredienteId}-${indice}`}>
                 {`${ing?.nome ?? '?'} ${cheio} · usou ${formatarQuantidade(item.quantidade, ing?.unidade ?? '')} → ${formatBRL(custo === null ? null : Math.round(custo))}`}
               </li>
             )
@@ -212,13 +215,15 @@ export function Calculadora({
         type="button"
         className="botao-principal"
         onClick={gravar}
-        disabled={conta.custoTotalCent === null || salvo || salvando}
+        disabled={conta.custoTotalCent === null || conta.custoUnitarioCent === null || salvo || salvando}
       >
         {salvo ? 'Produção salva ✓' : 'Salvar produção'}
       </button>
 
       <nav className="calc-rodape">
         <button type="button" className="calc-link" onClick={aoAbrirDoces}>Meus doces</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" className="calc-link" onClick={aoAbrirIngredientes}>Ingredientes</button>
         <span aria-hidden="true">·</span>
         <button type="button" className="calc-link" onClick={aoAbrirHistorico}>Histórico</button>
       </nav>

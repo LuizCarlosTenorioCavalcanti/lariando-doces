@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, limparGaveta } from '../dados/indexeddb'
-import { salvarIngrediente, listarReceitas, listarIngredientes } from '../dados/repositorio'
+import {
+  salvarIngrediente, salvarReceita, listarReceitas, listarIngredientes,
+} from '../dados/repositorio'
 import { FolhaEditarDoce } from './FolhaEditarDoce'
 
 beforeEach(async () => {
@@ -219,5 +221,43 @@ describe('FolhaEditarDoce — editar', () => {
     expect(screen.getByLabelText(/margem/i).value).toBe('200')
     expect(screen.getByLabelText('Ingrediente 1').value).toBe('Toddy')
     expect(screen.getByLabelText('Quantidade 1').value).toBe('80')
+  })
+
+  it('doce novo não oferece apagar — não existe ainda o que apagar', () => {
+    montar({ receita: null })
+    expect(screen.queryByRole('button', { name: /apagar doce/i })).toBe(null)
+  })
+
+  it('confirmar apaga o doce e fecha a folha', async () => {
+    const toddy = await salvarIngrediente(TODDY)
+    const receita = await salvarReceita({
+      nome: 'Brigadeiro', rendimentoBase: 50, margemPct: 200,
+      itens: [{ ingredienteId: toddy.id, quantidade: 80 }],
+    })
+    const aoGravado = vi.fn()
+    const aoFechar = vi.fn()
+    montar({ receita, ingredientes: [toddy], aoGravado, aoFechar })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Apagar doce' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Apagar doce' }))
+
+    await waitFor(() => expect(aoFechar).toHaveBeenCalled())
+    expect(aoGravado).toHaveBeenCalled()
+    expect(await listarReceitas()).toEqual([])
+  })
+
+  it('cancelar mantém o doce', async () => {
+    const toddy = await salvarIngrediente(TODDY)
+    const receita = await salvarReceita({
+      nome: 'Brigadeiro', rendimentoBase: 50, margemPct: 200,
+      itens: [{ ingredienteId: toddy.id, quantidade: 80 }],
+    })
+    montar({ receita, ingredientes: [toddy] })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Apagar doce' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(screen.queryByText(`Apagar ${receita.nome}?`)).toBe(null)
+    expect(await listarReceitas()).toHaveLength(1)
   })
 })
