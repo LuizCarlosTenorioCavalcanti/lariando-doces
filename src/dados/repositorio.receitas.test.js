@@ -85,6 +85,31 @@ describe('receitas', () => {
     })).rejects.toThrow(/negativa/i)
   })
 
+  // O campo de quantidade na tela guarda texto — em branco é `''`, não `undefined`. E
+  // `Number(null)` / `Number('')` são `0`, que passa em `Number.isFinite`: sem checar o
+  // vazio antes, a linha salvaria quantidade zero e o ingrediente ficaria de graça.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['string vazia', ''],
+  ])('recusa item com quantidade em branco (%s)', async (_rotulo, valor) => {
+    await expect(salvarReceita({
+      nome: 'X', rendimentoBase: 50, itens: [{ ingredienteId: 'ing_1', quantidade: valor }],
+    })).rejects.toThrow(/branco/i)
+  })
+
+  it('quantidade zero continua válida — numérica e como texto', async () => {
+    const receita = await salvarReceita({
+      nome: 'Zero',
+      rendimentoBase: 50,
+      itens: [{ ingredienteId: 'ing_1', quantidade: 0 }, { ingredienteId: 'ing_2', quantidade: '0' }],
+    })
+    expect(receita.itens).toEqual([
+      { ingredienteId: 'ing_1', quantidade: 0 },
+      { ingredienteId: 'ing_2', quantidade: 0 },
+    ])
+  })
+
   it('aceita margem vazia — nem todo doce tem preço de venda decidido', async () => {
     const r = await salvarReceita({ nome: 'Bolo', rendimentoBase: 12, margemPct: null, itens: [] })
     expect(r.margemPct).toBe(null)

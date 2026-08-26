@@ -4,7 +4,7 @@
 //   ingredientes (id text pk, nome text, nome_normalizado text unique, unidade text,
 //                 embalagem_qtd numeric, embalagem_preco_cent int, atualizado_em date)
 
-import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, naGaveta } from './indexeddb'
+import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, naGaveta } from './indexeddb'
 import { normalizar } from '../lib/texto'
 
 const UNIDADES = ['g', 'ml', 'un']
@@ -112,6 +112,12 @@ export async function salvarReceita(dados, id) {
 
   const itens = (dados?.itens ?? []).map((item) => {
     if (!item?.ingredienteId) throw new Error('Tem uma linha sem ingrediente escolhido.')
+    // `Number(null)` e `Number('')` são `0`, e `0` passa em `Number.isFinite`. Sem esta
+    // guarda, deixar o campo em branco na tela (que guarda texto, então em branco é `''`)
+    // salvaria quantidade zero — o ingrediente ficaria de graça na receita.
+    if (item.quantidade === null || item.quantidade === undefined || item.quantidade === '') {
+      throw new Error('Tem uma linha com quantidade em branco.')
+    }
     const quantidade = Number(item.quantidade)
     if (!Number.isFinite(quantidade)) {
       throw new Error('Tem uma linha com quantidade em branco.')
@@ -152,4 +158,67 @@ export async function salvarReceita(dados, id) {
  *  do doce quando foi salva, então o histórico continua legível sem ela. */
 export async function apagarReceita(id) {
   await naGaveta(GAVETA_RECEITAS, 'readwrite', (g) => g.delete(id))
+}
+
+// `Date.now()` tem resolução de milissegundo, e salvar duas produções em sequência rápida
+// (um teste, um toque duplo) pode gerar o MESMO instante. Como a listagem ordena por este
+// campo, um empate embaralha as duas — e "a última que salvei" é justamente a que ela
+// procura. Cada chamada aqui é garantida estritamente maior que a anterior.
+let ultimoAgoraMs = 0
+function agora() {
+  const t = Date.now()
+  ultimoAgoraMs = t > ultimoAgoraMs ? t : ultimoAgoraMs + 1
+  return new Date(ultimoAgoraMs).toISOString()
+}
+
+/** Da mais nova para a mais velha: é essa a ordem em que ela procura. */
+export function listarProducoes() {
+  return naGaveta(GAVETA_PRODUCOES, 'readonly', (g) => g.getAll())
+    .then((linhas) => (linhas || []).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)))
+}
+
+/** `Number(null)` e `Number('')` são `0`, e `0` passa em `Number.isFinite`. Sem esta
+ *  guarda, uma produção sem custo calculado entraria no histórico valendo R$ 0,00 — a
+ *  mentira mais cara que este app pode contar, porque é em cima do histórico que ela
+ *  decide reajustar o preço. */
+function centavosObrigatorios(valor) {
+  if (valor === null || valor === undefined || valor === '') return null
+  const n = Number(valor)
+  return Number.isFinite(n) ? Math.round(n) : null
+}
+
+/** Grava o custo JÁ CALCULADO, e nunca recalcula na leitura.
+ *
+ *  É a decisão que dá sentido ao histórico: quando o leite condensado subir em novembro, a
+ *  produção de agosto tem que continuar dizendo o que custou em agosto. Recalcular apagaria
+ *  a única informação que essa lista oferece — a variação do custo ao longo do tempo.
+ *
+ *  Por isso `nomeReceita` também é copiado, e não lido da receita: apagar o doce não pode
+ *  transformar o histórico em linhas sem nome. */
+export async function salvarProducao(dados) {
+  const custoTotalCent = centavosObrigatorios(dados?.custoTotalCent)
+  const custoUnitarioCent = centavosObrigatorios(dados?.custoUnitarioCent)
+  if (custoTotalCent === null || custoUnitarioCent === null) {
+    throw new Error('Não dá para salvar uma produção sem custo calculado.')
+  }
+
+  const registro = {
+    id: novoId('prod'),
+    receitaId: dados.receitaId,
+    nomeReceita: String(dados.nomeReceita ?? '').trim(),
+    receitasFeitas: Number(dados.receitasFeitas),
+    rendimento: Number(dados.rendimento),
+    custoTotalCent,
+    custoUnitarioCent,
+    parcial: Boolean(dados.parcial),
+    data: hoje(),
+    criadoEm: agora(),
+  }
+
+  await naGaveta(GAVETA_PRODUCOES, 'readwrite', (g) => g.put(registro))
+  return registro
+}
+
+export async function apagarProducao(id) {
+  await naGaveta(GAVETA_PRODUCOES, 'readwrite', (g) => g.delete(id))
 }
