@@ -89,3 +89,67 @@ export function listarReceitas() {
     .then((linhas) => (linhas || [])
       .sort((a, b) => a.nomeNormalizado.localeCompare(b.nomeNormalizado, 'pt-BR')))
 }
+
+/** Sem `id`, cria. Com `id`, edita preservando `criadoEm`.
+ *
+ *  A receita guarda `ingredienteId` e `quantidade`, e nada mais. Nenhum preço encosta
+ *  aqui: é isso que faz "o leite condensado subiu" ser uma edição num lugar só. */
+export async function salvarReceita(dados, id) {
+  const nome = String(dados?.nome ?? '').trim()
+  if (!nome) throw new Error('O doce precisa de um nome.')
+
+  const rendimentoBase = Number(dados?.rendimentoBase)
+  if (!Number.isFinite(rendimentoBase) || rendimentoBase <= 0) {
+    throw new Error('O rendimento da receita precisa ser maior que zero.')
+  }
+
+  const margem = dados?.margemPct
+  const margemPct =
+    margem === null || margem === undefined || margem === '' ? null : Number(margem)
+  if (margemPct !== null && !Number.isFinite(margemPct)) {
+    throw new Error('A margem não é um número.')
+  }
+
+  const itens = (dados?.itens ?? []).map((item) => {
+    if (!item?.ingredienteId) throw new Error('Tem uma linha sem ingrediente escolhido.')
+    const quantidade = Number(item.quantidade)
+    if (!Number.isFinite(quantidade)) {
+      throw new Error('Tem uma linha com quantidade em branco.')
+    }
+    if (quantidade < 0) {
+      throw new Error('Tem uma linha com quantidade negativa.')
+    }
+    // Só estes dois campos atravessam. Se a tela mandar o ingrediente inteiro junto (e
+    // vai, porque é cômodo), o preço iria de carona para dentro da receita e congelaria
+    // ali — exatamente o que este modelo existe para evitar.
+    return { ingredienteId: item.ingredienteId, quantidade }
+  })
+
+  const nomeNormalizado = normalizar(nome)
+  const existentes = await listarReceitas()
+
+  const conflito = existentes.find((r) => r.nomeNormalizado === nomeNormalizado && r.id !== id)
+  if (conflito) throw new Error(`Já existe um doce chamado "${conflito.nome}".`)
+
+  const anterior = id ? existentes.find((r) => r.id === id) : null
+  if (id && !anterior) throw new Error('Doce não encontrado.')
+
+  const registro = {
+    id: id ?? novoId('rec'),
+    nome,
+    nomeNormalizado,
+    rendimentoBase,
+    margemPct,
+    itens,
+    criadoEm: anterior?.criadoEm ?? hoje(),
+  }
+
+  await naGaveta(GAVETA_RECEITAS, 'readwrite', (g) => g.put(registro))
+  return registro
+}
+
+/** Apagar receita é permitido mesmo com produção no histórico: a produção copiou o nome
+ *  do doce quando foi salva, então o histórico continua legível sem ela. */
+export async function apagarReceita(id) {
+  await naGaveta(GAVETA_RECEITAS, 'readwrite', (g) => g.delete(id))
+}
