@@ -56,10 +56,13 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
   const [focoAposCriar, setFocoAposCriar] = useState(null)
 
   const porNome = useMemo(() => {
-    const mapa = Object.fromEntries(
-      ingredientes.map((i) => [i.nomeNormalizado ?? normalizar(i.nome), i]),
-    )
+    const mapa = {}
+    // O local entra primeiro e serve só para preencher o vão entre criar o ingrediente e o
+    // pai recarregar. Assim que a prop chega, ela é a verdade — foi lida do banco — e
+    // sobrescreve. Na ordem contrária, um preço editado em outro lugar nunca apareceria no
+    // parêntese, que é justamente onde ela confere se o valor ainda é o do mercado.
     for (const i of criadosAgora) mapa[i.nomeNormalizado ?? normalizar(i.nome)] = i
+    for (const i of ingredientes) mapa[i.nomeNormalizado ?? normalizar(i.nome)] = i
     return mapa
   }, [ingredientes, criadosAgora])
 

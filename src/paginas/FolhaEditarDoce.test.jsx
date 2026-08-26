@@ -173,6 +173,36 @@ describe('FolhaEditarDoce — cadastro embutido de ingrediente', () => {
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/embalagem/i))
     expect(await listarIngredientes()).toEqual([])
   })
+
+  it('quando a prop chega mais fresca, ela vence o estado local do cadastro embutido', async () => {
+    const { rerender } = montar()
+    await userEvent.type(screen.getByLabelText('Ingrediente 1'), 'Chocolate')
+    await userEvent.click(screen.getByRole('button', { name: /cadastrar "Chocolate"/i }))
+    await userEvent.selectOptions(screen.getByLabelText('Unidade'), 'g')
+    await userEvent.type(screen.getByLabelText(/quanto vem na embalagem/i), '200')
+    await userEvent.type(screen.getByLabelText(/preço da embalagem/i), '8,00')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar ingrediente' }))
+
+    await waitFor(() => expect(screen.getByText('(200 g — R$ 8,00)')).toBeTruthy())
+
+    const [chocolate] = await listarIngredientes()
+
+    // Não é a gravação de verdade que está em jogo aqui — é a ORDEM do merge. Monta a prop
+    // na mão, com o mesmo id/nomeNormalizado mas preço diferente, como se o pai tivesse
+    // recarregado e essa fosse agora a verdade vinda do banco.
+    rerender(
+      <FolhaEditarDoce
+        aberta
+        receita={null}
+        ingredientes={[{ ...chocolate, embalagemPrecoCent: 500 }]}
+        aoFechar={() => {}}
+        aoGravado={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('(200 g — R$ 5,00)')).toBeTruthy()
+    expect(screen.queryByText('(200 g — R$ 8,00)')).toBe(null)
+  })
 })
 
 describe('FolhaEditarDoce — editar', () => {
