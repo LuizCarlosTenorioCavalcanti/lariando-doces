@@ -67,3 +67,23 @@ export async function naGaveta(gaveta, modo, fn) {
 export function limparGaveta(gaveta) {
   return naGaveta(gaveta, 'readwrite', (g) => g.clear())
 }
+
+/** Como `naGaveta`, mas para uma transação que cobre VÁRIAS gavetas ao mesmo tempo — é o
+ *  que torna uma operação atômica: ou tudo entra, ou nada entra, nunca fica pela metade.
+ *  `fn` recebe a transação; quem chama pega os object stores dela com `tx.objectStore(nome)`
+ *  e enfileira os requests DENTRO da função, sem `await` no meio — um `await` ali cederia a
+ *  vez ao event loop e a transação fecharia sozinha antes da hora. */
+export async function naGavetas(gavetas, modo, fn) {
+  const db = await abrir()
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(gavetas, modo)
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error)
+      tx.oncomplete = () => resolve()
+      fn(tx)
+    })
+  } finally {
+    db.close()
+  }
+}

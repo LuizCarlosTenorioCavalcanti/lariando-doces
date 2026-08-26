@@ -2,7 +2,7 @@
 // backup em arquivo é o que torna essa escolha de armazenamento defensável.
 
 import {
-  GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, naGaveta,
+  GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, naGavetas,
 } from './indexeddb'
 import { listarIngredientes, listarReceitas, listarProducoes } from './repositorio'
 import { hojeLocal } from '../lib/formato'
@@ -61,6 +61,25 @@ export function validarBackup(obj) {
       }
     }
   }
+
+  // Receita sem `itens` (ou com item malformado) passa pelas checagens acima — elas só
+  // olham `id`/`nomeNormalizado` — e derruba `FolhaDoces` num `.length` de `undefined`
+  // durante o render, tela branca sem explicação. Recusar aqui é a única chance de dizer
+  // o motivo antes de já ter apagado o que estava salvo.
+  for (const registro of obj.receitas) {
+    if (!Array.isArray(registro.itens)) {
+      return { ok: false, motivo: 'O backup tem uma receita sem lista de ingredientes — o arquivo está corrompido.' }
+    }
+    for (const item of registro.itens) {
+      if (!item || typeof item !== 'object' || typeof item.ingredienteId !== 'string' || !item.ingredienteId) {
+        return { ok: false, motivo: 'O backup tem um item de receita sem ingrediente — o arquivo está corrompido.' }
+      }
+      if (typeof item.quantidade !== 'number' || !Number.isFinite(item.quantidade) || item.quantidade < 0) {
+        return { ok: false, motivo: 'O backup tem um item de receita com quantidade inválida — o arquivo está corrompido.' }
+      }
+    }
+  }
+
   return { ok: true }
 }
 
@@ -76,17 +95,24 @@ export function resumo(obj) {
 /** SUBSTITUI tudo. Não mescla.
  *
  *  Mesclar dois bancos sem regra de conflito é o caminho mais curto para ela terminar com
- *  dois "Toddy" e um custo dobrado — e sem jeito de saber qual dos dois está certo. */
+ *  dois "Toddy" e um custo dobrado — e sem jeito de saber qual dos dois está certo.
+ *
+ *  As três gavetas entram numa ÚNICA transação: se uma colisão de índice único (ou outro
+ *  erro) estourar no meio do caminho, o IndexedDB desfaz sozinho tudo que essa transação
+ *  já tinha feito — inclusive os `clear()`. Sem isso, um arquivo malformado no meio do
+ *  caminho deixaria as gavetas apagadas pela metade, sem jeito de voltar atrás. */
 export async function importar(obj) {
   const valido = validarBackup(obj)
   if (!valido.ok) throw new Error(valido.motivo)
 
-  for (const { chave, gaveta } of GAVETAS) {
-    await naGaveta(gaveta, 'readwrite', (g) => g.clear())
-    for (const registro of obj[chave]) {
-      await naGaveta(gaveta, 'readwrite', (g) => g.put(registro))
+  const gavetas = GAVETAS.map((g) => g.gaveta)
+  await naGavetas(gavetas, 'readwrite', (tx) => {
+    for (const { chave, gaveta } of GAVETAS) {
+      const g = tx.objectStore(gaveta)
+      g.clear()
+      for (const registro of obj[chave]) g.put(registro)
     }
-  }
+  })
 
   return resumo(obj)
 }

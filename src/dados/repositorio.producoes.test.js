@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, limparGaveta } from './indexeddb'
+import {
+  GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, limparGaveta, naGaveta,
+} from './indexeddb'
 import {
   salvarIngrediente, salvarReceita, apagarReceita,
   listarProducoes, salvarProducao, apagarProducao,
@@ -123,5 +125,28 @@ describe('produções', () => {
     const { producao } = await cenario()
     await apagarProducao(producao.id)
     expect(await listarProducoes()).toEqual([])
+  })
+
+  it('recusa custoTotalCent negativo', async () => {
+    await expect(salvarProducao({
+      receitaId: 'rec_1', nomeReceita: 'X', receitasFeitas: 1, rendimento: 50,
+      custoTotalCent: -100, custoUnitarioCent: 65, parcial: false,
+    })).rejects.toThrow(/negativ/i)
+  })
+
+  it('recusa custoUnitarioCent negativo', async () => {
+    await expect(salvarProducao({
+      receitaId: 'rec_1', nomeReceita: 'X', receitasFeitas: 1, rendimento: 50,
+      custoTotalCent: 3250, custoUnitarioCent: -1, parcial: false,
+    })).rejects.toThrow(/negativ/i)
+  })
+
+  // Registro cru, sem passar por `salvarProducao` — é o que um backup malformado que
+  // escapasse da validação deixaria na gaveta (`validarBackup` só exige `id` de produção).
+  // A listagem não pode quebrar por isso.
+  it('ordenação tolera registro sem criadoEm, sem derrubar a listagem', async () => {
+    await naGaveta(GAVETA_PRODUCOES, 'readwrite', (g) => g.put({ id: 'prod_cru' }))
+    const lista = await listarProducoes()
+    expect(lista.some((p) => p.id === 'prod_cru')).toBe(true)
   })
 })

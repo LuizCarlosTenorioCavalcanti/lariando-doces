@@ -96,6 +96,52 @@ describe('validarBackup', () => {
     expect(r.ok).toBe(false)
     expect(r.motivo).toMatch(/nome/i)
   })
+
+  // Sem esta checagem, uma receita sem `itens` passa na validação e derruba `FolhaDoces`
+  // num `r.itens.length` de `undefined` durante o render — tela branca, sem explicação.
+  it('recusa receita sem lista de itens', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [{ id: 'rec_1', nomeNormalizado: 'brigadeiro' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/ingrediente/i)
+  })
+
+  it('recusa item de receita sem ingredienteId', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [{
+        id: 'rec_1', nomeNormalizado: 'brigadeiro', itens: [{ quantidade: 80 }],
+      }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/ingrediente/i)
+  })
+
+  it('recusa item de receita com quantidade negativa', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [{
+        id: 'rec_1', nomeNormalizado: 'brigadeiro',
+        itens: [{ ingredienteId: 'ing_1', quantidade: -5 }],
+      }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/quantidade/i)
+  })
+
+  it('recusa item de receita com quantidade não numérica', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [{
+        id: 'rec_1', nomeNormalizado: 'brigadeiro',
+        itens: [{ ingredienteId: 'ing_1', quantidade: 'abc' }],
+      }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/quantidade/i)
+  })
 })
 
 describe('resumo', () => {
@@ -174,6 +220,35 @@ describe('importar', () => {
     await expect(importar({ versao: 99 })).rejects.toThrow(/vers/i)
 
     expect(await listarIngredientes()).toHaveLength(1)
+    expect(await listarReceitas()).toHaveLength(1)
+    expect(await listarProducoes()).toHaveLength(1)
+  })
+
+  it('receita sem itens não destrói o que já estava salvo', async () => {
+    await semear()
+    await expect(importar({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [{ id: 'rec_x', nomeNormalizado: 'x' }],
+    })).rejects.toThrow(/ingrediente/i)
+
+    expect(await listarIngredientes()).toHaveLength(1)
+    expect(await listarReceitas()).toHaveLength(1)
+    expect(await listarProducoes()).toHaveLength(1)
+  })
+
+  it('colisão de índice único durante a importação não deixa a gaveta pela metade', async () => {
+    await semear()
+    await expect(importar({
+      versao: 1, receitas: [], producoes: [],
+      ingredientes: [
+        { id: 'ing_a', nome: 'Fermento', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
+        { id: 'ing_b', nome: 'Fermento 2', nomeNormalizado: 'fermento', unidade: 'g', embalagemQtd: 100, embalagemPrecoCent: 300 },
+      ],
+    })).rejects.toThrow()
+
+    const ingredientes = await listarIngredientes()
+    expect(ingredientes).toHaveLength(1)
+    expect(ingredientes[0].nome).toBe('Toddy')
     expect(await listarReceitas()).toHaveLength(1)
     expect(await listarProducoes()).toHaveLength(1)
   })

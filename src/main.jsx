@@ -3,10 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './styles/tokens.css'
 import './styles/base.css'
 import App from './App.jsx'
+import { ParaquedasDeErro } from './componentes/ParaquedasDeErro.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ParaquedasDeErro>
+      <App />
+    </ParaquedasDeErro>
   </StrictMode>,
 )
 

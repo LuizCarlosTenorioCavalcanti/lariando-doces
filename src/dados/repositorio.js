@@ -177,7 +177,11 @@ function agora() {
 /** Da mais nova para a mais velha: é essa a ordem em que ela procura. */
 export function listarProducoes() {
   return naGaveta(GAVETA_PRODUCOES, 'readonly', (g) => g.getAll())
-    .then((linhas) => (linhas || []).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)))
+    // `String(... ?? '')` pela mesma razão de `porNomeNormalizado`: um registro sem
+    // `criadoEm` (alcançável — `validarBackup` só exige `id` de produção) não pode
+    // derrubar a listagem inteira com `TypeError`.
+    .then((linhas) => (linhas || [])
+      .sort((a, b) => String(b.criadoEm ?? '').localeCompare(String(a.criadoEm ?? ''))))
 }
 
 /** `Number(null)` e `Number('')` são `0`, e `0` passa em `Number.isFinite`. Sem esta
@@ -203,6 +207,9 @@ export async function salvarProducao(dados) {
   const custoUnitarioCent = centavosObrigatorios(dados?.custoUnitarioCent)
   if (custoTotalCent === null || custoUnitarioCent === null) {
     throw new Error('Não dá para salvar uma produção sem custo calculado.')
+  }
+  if (custoTotalCent < 0 || custoUnitarioCent < 0) {
+    throw new Error('O custo da produção não pode ser negativo.')
   }
 
   const registro = {

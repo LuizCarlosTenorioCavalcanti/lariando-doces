@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, limparGaveta } from './indexeddb'
+import {
+  GAVETA_INGREDIENTES, GAVETA_RECEITAS, GAVETA_PRODUCOES, limparGaveta, naGaveta,
+} from './indexeddb'
 import { listarIngredientes, salvarIngrediente, apagarIngrediente } from './repositorio'
 
 beforeEach(async () => {
@@ -81,5 +83,13 @@ describe('ingredientes', () => {
     const salvo = await salvarIngrediente(TODDY)
     await apagarIngrediente(salvo.id)
     expect(await listarIngredientes()).toEqual([])
+  })
+
+  // Registro cru, sem passar por `salvarIngrediente` — é o que um backup malformado que
+  // escapasse da validação deixaria na gaveta. A listagem não pode quebrar por isso.
+  it('ordenação tolera registro sem nomeNormalizado, sem derrubar a listagem', async () => {
+    await naGaveta(GAVETA_INGREDIENTES, 'readwrite', (g) => g.put({ id: 'ing_cru' }))
+    const lista = await listarIngredientes()
+    expect(lista.some((i) => i.id === 'ing_cru')).toBe(true)
   })
 })
