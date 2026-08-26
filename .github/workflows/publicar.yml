@@ -17,6 +17,11 @@ concurrency:
 jobs:
   construir:
     runs-on: ubuntu-latest
+    # A suíte tem teste que compara "dia local" (a app é para uso no Brasil). O runner do
+    # GitHub roda em UTC por padrão; sem isso o dia vira antes da hora e o teste cai sem
+    # nenhum defeito real no código.
+    env:
+      TZ: America/Sao_Paulo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
