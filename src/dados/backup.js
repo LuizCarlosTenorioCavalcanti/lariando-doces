@@ -41,7 +41,7 @@ function textoNaoVazio(valor) {
  *  aqui é a única chance de dizer o motivo sem já ter apagado o que estava salvo. */
 export function validarBackup(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-    return { ok: false, motivo: 'Este arquivo não é um backup do Lariano Doces.' }
+    return { ok: false, motivo: 'Este arquivo não é um backup do Lariando Doces.' }
   }
   if (obj.versao !== VERSAO_BACKUP) {
     return { ok: false, motivo: `Este backup é da versão ${obj.versao ?? '?'}, e o app lê a versão ${VERSAO_BACKUP}.` }

@@ -13,7 +13,7 @@ beforeEach(async () => {
 describe('App', () => {
   it('mostra o nome do app antes mesmo de os dados chegarem', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { name: 'Lariano Doces', level: 1 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Lariando Doces', level: 1 })).toBeTruthy()
   })
 
   it('sem doce cadastrado, convida a cadastrar o primeiro', async () => {

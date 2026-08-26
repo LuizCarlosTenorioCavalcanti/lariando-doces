@@ -25,7 +25,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-topo">
-        <h1>Lariano Doces</h1>
+        <h1>Lariando Doces</h1>
         <button
           type="button"
           className="app-ajustes"

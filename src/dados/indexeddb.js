@@ -1,7 +1,7 @@
 // Acesso cru ao IndexedDB. Ninguém fora de `repositorio.js` importa este arquivo — é essa
 // disciplina que torna uma troca por Supabase, um dia, a reescrita de UM arquivo.
 
-const NOME = 'lariano-doces'
+const NOME = 'lariando-doces'
 const VERSAO = 1
 
 export const GAVETA_INGREDIENTES = 'ingredientes'

@@ -22,7 +22,7 @@ export function FolhaAjustes({ aberta, aoFechar, aoGravado }) {
       )
       const a = document.createElement('a')
       a.href = url
-      a.download = `lariano-doces-${dados.exportadoEm}.json`
+      a.download = `lariando-doces-${dados.exportadoEm}.json`
       a.click()
       URL.revokeObjectURL(url)
       setRecado('Backup salvo. Guarde esse arquivo fora do celular.')
