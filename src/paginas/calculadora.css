@@ -1,0 +1,72 @@
+.campo-caixa select { flex: 1; border: 0; outline: 0; background: transparent; padding: 14px 0; }
+
+.chip {
+  border: 1px solid var(--borda);
+  background: var(--card);
+  color: var(--texto-medio);
+  border-radius: var(--raio-pilula);
+  padding: 8px 16px;
+  font-size: .88rem;
+  margin: -8px 0 20px;
+}
+
+.resultado {
+  background: var(--marca);
+  color: #fff;
+  border-radius: var(--raio-lg);
+  padding: 20px 22px;
+  box-shadow: var(--e2);
+  margin-bottom: 16px;
+}
+
+.resultado-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.resultado-linha span { opacity: .82; }
+.resultado-linha strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.resultado hr { border: 0; border-top: 1px solid rgba(255, 255, 255, .22); margin: 12px 0; }
+
+.calc-detalhe {
+  border: 0;
+  background: transparent;
+  color: var(--marca);
+  font-weight: 600;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.detalhe {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font-size: .86rem;
+  color: var(--texto-medio);
+}
+
+.detalhe li { padding: 5px 0; }
+.detalhe li + li { border-top: 1px solid var(--borda); }
+
+.calc-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+  color: var(--texto-suave);
+}
+
+.calc-link {
+  border: 0;
+  background: transparent;
+  color: var(--marca);
+  font-weight: 600;
+  padding: 8px 4px;
+}

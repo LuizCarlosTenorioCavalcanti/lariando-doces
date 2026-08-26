@@ -4,7 +4,9 @@ import './campos.css'
  *
  *  Enquanto ela digita "8," o conteúdo não é um número válido. Um campo controlado por
  *  número apagaria a vírgula no instante em que ela a digita, e o campo viraria uma luta. */
-export function CampoNumero({ id, rotulo, valor, aoMudar, prefixo, sufixo, dica, autoFocus }) {
+export function CampoNumero({
+  id, rotulo, valor, aoMudar, prefixo, sufixo, dica, autoFocus, placeholder,
+}) {
   return (
     <div className="campo">
       <label className="campo-rotulo" htmlFor={id}>{rotulo}</label>
@@ -16,6 +18,7 @@ export function CampoNumero({ id, rotulo, valor, aoMudar, prefixo, sufixo, dica,
           inputMode="decimal"
           value={valor}
           autoFocus={autoFocus}
+          placeholder={placeholder}
           onChange={(e) => aoMudar(e.target.value)}
         />
         {sufixo ? <span className="campo-fixo">{sufixo}</span> : null}

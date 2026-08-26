@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useDados } from './dados/useDados'
+import { Calculadora } from './paginas/Calculadora'
 import { FolhaDoces } from './paginas/FolhaDoces'
 import { FolhaEditarDoce } from './paginas/FolhaEditarDoce'
 import { FolhaIngredientes } from './paginas/FolhaIngredientes'
@@ -16,6 +17,8 @@ export default function App() {
   const abrirNovo = useCallback(() => { setReceitaEditando(null); setFolha('novo') }, [])
   const fecharFolha = useCallback(() => setFolha(null), [])
   const escolherReceita = useCallback((r) => { setReceitaEditando(r); setFolha('editar') }, [])
+  const abrirDoces = useCallback(() => setFolha('doces'), [])
+  const abrirHistorico = useCallback(() => setFolha('historico'), [])
 
   return (
     <div className="app">
@@ -43,6 +46,17 @@ export default function App() {
               Cadastrar meu primeiro doce
             </button>
           </section>
+        ) : null}
+
+        {!dados.carregando && dados.receitas.length > 0 ? (
+          <Calculadora
+            receitas={dados.receitas}
+            ingredientesPorId={dados.ingredientesPorId}
+            producoes={dados.producoes}
+            aoAbrirDoces={abrirDoces}
+            aoAbrirHistorico={abrirHistorico}
+            aoGravado={dados.recarregar}
+          />
         ) : null}
       </main>
 
