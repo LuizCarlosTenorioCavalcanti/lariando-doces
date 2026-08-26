@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: 17px;
+  line-height: 1.45;
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%;
+}
+
+button { font: inherit; cursor: pointer; }
+
+input, select {
+  font: inherit;
+  color: inherit;
+}
+
+/* 16px é o piso: abaixo disso o Safari do iPhone dá zoom sozinho ao focar o campo, e a
+   tela sai do lugar no meio da digitação. */
+input, select, textarea { font-size: max(16px, 1em); }
+
+h1, h2, h3 { margin: 0; font-weight: 650; }
