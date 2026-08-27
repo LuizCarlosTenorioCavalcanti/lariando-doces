@@ -13,9 +13,9 @@ export const VERSAO_BACKUP = 1
 // que o `.sort()` de `listarIngredientes`/`listarReceitas` lê. Um registro sem ele que
 // escape da validação derruba essas listas com `TypeError`, e o app fica sem abrir.
 const GAVETAS = [
-  { chave: 'ingredientes', gaveta: GAVETA_INGREDIENTES, artigo: 'um', singular: 'ingrediente', precisaNome: true },
-  { chave: 'receitas', gaveta: GAVETA_RECEITAS, artigo: 'uma', singular: 'receita', precisaNome: true },
-  { chave: 'producoes', gaveta: GAVETA_PRODUCOES, artigo: 'uma', singular: 'produção', precisaNome: false },
+  { chave: 'ingredientes', gaveta: GAVETA_INGREDIENTES, artigo: 'um', singular: 'ingrediente', doisDuas: 'dois', plural: 'ingredientes', precisaNome: true },
+  { chave: 'receitas', gaveta: GAVETA_RECEITAS, artigo: 'uma', singular: 'receita', doisDuas: 'duas', plural: 'receitas', precisaNome: true },
+  { chave: 'producoes', gaveta: GAVETA_PRODUCOES, artigo: 'uma', singular: 'produção', doisDuas: 'duas', plural: 'produções', precisaNome: false },
 ]
 
 export async function exportar() {
@@ -52,12 +52,41 @@ export function validarBackup(obj) {
     }
   }
   for (const g of GAVETAS) {
+    // Duas colisões diferentes, e nenhuma delas se anuncia sozinha na hora do `put`:
+    // id repetido SOBRESCREVE em silêncio (a importação "dá certo" tendo engolido um
+    // registro), e `nomeNormalizado` repetido estoura um `ConstraintError` em inglês do
+    // índice único — depois de a usuária já ter autorizado apagar o que tinha. As duas
+    // precisam morrer aqui, antes da pergunta destrutiva.
+    const idsVistos = new Set()
+    const nomesVistos = new Map()
+
     for (const registro of obj[g.chave]) {
       if (!registro || typeof registro !== 'object' || !textoNaoVazio(registro.id)) {
         return { ok: false, motivo: `O backup tem ${g.artigo} ${g.singular} sem id — o arquivo está corrompido.` }
       }
-      if (g.precisaNome && !textoNaoVazio(registro.nomeNormalizado)) {
-        return { ok: false, motivo: `O backup tem ${g.artigo} ${g.singular} sem nome interno — o arquivo está corrompido.` }
+      if (idsVistos.has(registro.id)) {
+        return { ok: false, motivo: `O backup tem ${g.doisDuas} ${g.plural} com o mesmo id — o arquivo está corrompido.` }
+      }
+      idsVistos.add(registro.id)
+
+      if (g.precisaNome) {
+        if (!textoNaoVazio(registro.nomeNormalizado)) {
+          return { ok: false, motivo: `O backup tem ${g.artigo} ${g.singular} sem nome interno — o arquivo está corrompido.` }
+        }
+        if (nomesVistos.has(registro.nomeNormalizado)) {
+          return {
+            ok: false,
+            motivo: `Esse arquivo tem ${g.doisDuas} ${g.plural} com o mesmo nome: ${nomesVistos.get(registro.nomeNormalizado)}.`,
+          }
+        }
+        // Guarda o nome como ela o escreveu, não o normalizado: é por esse que ela procura
+        // no arquivo. E guarda o da PRIMEIRA ocorrência — as seguintes são justamente as
+        // grafias tortas ("toddy ") que a normalização existe para colapsar. Sem `nome`, o
+        // normalizado ainda é melhor que nada.
+        nomesVistos.set(
+          registro.nomeNormalizado,
+          textoNaoVazio(registro.nome) ? registro.nome.trim() : registro.nomeNormalizado,
+        )
       }
     }
   }

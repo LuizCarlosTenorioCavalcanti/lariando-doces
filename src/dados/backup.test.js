@@ -142,6 +142,60 @@ describe('validarBackup', () => {
     expect(r.ok).toBe(false)
     expect(r.motivo).toMatch(/quantidade/i)
   })
+
+  // As gavetas de ingredientes e receitas têm índice ÚNICO em `nomeNormalizado`. Sem esta
+  // checagem, o arquivo passa na validação, a usuária autoriza "substituir tudo" e só então
+  // o IndexedDB estoura um `ConstraintError` em inglês — depois de ela ter dito sim a apagar
+  // o que tinha. Recusar aqui é dizer o problema ANTES da pergunta destrutiva, e com o nome
+  // do duplicado, que é a única informação que permite consertar o arquivo.
+  it('recusa dois ingredientes com o mesmo nome, dizendo qual', () => {
+    const r = validarBackup({
+      versao: 1, receitas: [], producoes: [],
+      ingredientes: [
+        { id: 'ing_a', nome: 'Toddy', nomeNormalizado: 'toddy' },
+        { id: 'ing_b', nome: 'toddy ', nomeNormalizado: 'toddy' },
+      ],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/mesmo nome/i)
+    expect(r.motivo).toMatch(/Toddy/)
+  })
+
+  it('recusa duas receitas com o mesmo nome, dizendo qual', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], producoes: [],
+      receitas: [
+        { id: 'rec_a', nome: 'Brigadeiro', nomeNormalizado: 'brigadeiro', itens: [] },
+        { id: 'rec_b', nome: 'Brigadeiro', nomeNormalizado: 'brigadeiro', itens: [] },
+      ],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/mesmo nome/i)
+    expect(r.motivo).toMatch(/Brigadeiro/)
+  })
+
+  // Id repetido não estoura: o segundo `put` sobrescreve o primeiro em silêncio, e a
+  // importação "dá certo" tendo engolido um registro. Só a contagem final denunciaria.
+  it('recusa dois registros com o mesmo id na mesma gaveta', () => {
+    const r = validarBackup({
+      versao: 1, receitas: [], producoes: [],
+      ingredientes: [
+        { id: 'ing_a', nome: 'Toddy', nomeNormalizado: 'toddy' },
+        { id: 'ing_a', nome: 'Leite', nomeNormalizado: 'leite' },
+      ],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/mesmo id/i)
+  })
+
+  it('não confunde nome repetido entre gavetas diferentes', () => {
+    const r = validarBackup({
+      versao: 1, producoes: [],
+      ingredientes: [{ id: 'ing_a', nome: 'Beijinho', nomeNormalizado: 'beijinho' }],
+      receitas: [{ id: 'rec_a', nome: 'Beijinho', nomeNormalizado: 'beijinho', itens: [] }],
+    })
+    expect(r).toEqual({ ok: true })
+  })
 })
 
 describe('resumo', () => {
@@ -236,16 +290,13 @@ describe('importar', () => {
     expect(await listarProducoes()).toHaveLength(1)
   })
 
-  it('colisão de índice único durante a importação não deixa a gaveta pela metade', async () => {
+  // Este caso era, até a v1.1, a prova de que a transação única desfazia tudo — a colisão
+  // chegava ao banco. Hoje `validarBackup` recusa antes, então o que ele prova mudou: que a
+  // usuária vê o problema, em português, SEM ter sido levada à pergunta destrutiva. A prova
+  // do rollback mudou de camada e vive em `indexeddb.test.js`, junto de `naGavetas`.
+  it('colisão de nome morre na validação, em português, sem tocar no que estava salvo', async () => {
     await semear()
 
-    // Não usa `.rejects.toThrow()` sem argumento: essa forma passa mesmo se a promessa
-    // rejeitar com `null` — e é exatamente isso que `tx.onerror` devolvia antes da
-    // correção (a spec só preenche `transaction.error` no passo de abort, que roda DEPOIS
-    // do evento `error`). `FolhaAjustes.jsx` faz `catch (e) { setErro(e.message) }`, e
-    // `null.message` é `TypeError` calado — a tela fica muda. Por isso a prova aqui exige
-    // um rejeito de verdade, com mensagem — não checa `instanceof Error` porque o valor
-    // real é um `DOMException` (`ConstraintError`), que neste ambiente não estende `Error`.
     let erro = null
     try {
       await importar({
@@ -258,9 +309,13 @@ describe('importar', () => {
     } catch (e) {
       erro = e
     }
+
     expect(erro).toBeTruthy()
-    expect(typeof erro.message).toBe('string')
-    expect(erro.message.length).toBeGreaterThan(0)
+    expect(erro.message).toContain('mesmo nome')
+    expect(erro.message).toContain('Fermento')
+    // A frase crua do navegador ("A mutation operation was attempted…") não pode vazar para
+    // a tela: ela está em inglês e não diz nada que ela possa consertar no arquivo.
+    expect(erro.message).not.toMatch(/[a-z]ation|attempted|constraint/i)
 
     const ingredientes = await listarIngredientes()
     expect(ingredientes).toHaveLength(1)

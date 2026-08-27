@@ -112,6 +112,12 @@ export async function salvarReceita(dados, id) {
   if (margemPct !== null && !Number.isFinite(margemPct)) {
     throw new Error('A margem não é um número.')
   }
+  // Vender com prejuízo é decisão dela (queimar estoque, doce de véspera), então margem
+  // negativa passa. O que não existe é preço de venda negativo: em −100% o preço zera, e
+  // abaixo disso a tela mostra o doce pagando para sair. Isso é dedo errado no campo.
+  if (margemPct !== null && margemPct <= -100) {
+    throw new Error('A margem não pode ser -100% ou menos — isso deixaria o preço em zero ou negativo.')
+  }
 
   const itens = (dados?.itens ?? []).map((item) => {
     if (!item?.ingredienteId) throw new Error('Tem uma linha sem ingrediente escolhido.')

@@ -117,6 +117,24 @@ describe('receitas', () => {
     expect(r.margemPct).toBe(null)
   })
 
+  // Margem de −100% zera o preço; abaixo disso ele fica NEGATIVO na tela, como se o doce
+  // pagasse para sair. É dedo errado no campo (um "-" sobrando, ou "-150"), e o lugar de
+  // barrar é aqui, na gravação, do mesmo jeito que custo negativo já é barrado — devolver
+  // `null` lá no `precoSugerido` trocaria um número gritante por um travessão mudo.
+  it('recusa margem de −100% ou menos, que daria preço zero ou negativo', async () => {
+    await expect(salvarReceita({ nome: 'A', rendimentoBase: 10, margemPct: -100, itens: [] }))
+      .rejects.toThrow(/margem/i)
+    await expect(salvarReceita({ nome: 'B', rendimentoBase: 10, margemPct: -150, itens: [] }))
+      .rejects.toThrow(/margem/i)
+  })
+
+  // Prejuízo de propósito existe: queimar estoque, doce de véspera. O que não existe é
+  // preço negativo — por isso a fronteira fica em −100, não em zero.
+  it('aceita margem negativa acima de −100%, que é vender com prejuízo', async () => {
+    const r = await salvarReceita({ nome: 'C', rendimentoBase: 10, margemPct: -30, itens: [] })
+    expect(r.margemPct).toBe(-30)
+  })
+
   it('editar mantém o id e o criadoEm', async () => {
     const { receita } = await comBrigadeiro()
     const editada = await salvarReceita(

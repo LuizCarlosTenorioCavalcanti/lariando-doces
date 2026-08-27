@@ -7,6 +7,9 @@
     <meta name="robots" content="noindex" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="icon" href="./icone.svg" type="image/svg+xml" />
+    <!-- O iOS ignora SVG na tela inicial: sem este PNG, o ícone do app instalado sai como
+         um screenshot da página. Gêmeo de icone.svg — mexeu num, mexe no outro. -->
+    <link rel="apple-touch-icon" href="./icone-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Lariando" />
     <title>Lariando Doces</title>
