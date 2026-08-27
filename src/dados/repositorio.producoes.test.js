@@ -33,6 +33,14 @@ async function cenario() {
   return { toddy, receita, producao }
 }
 
+async function base() {
+  const { receita } = await cenario()
+  return {
+    receitaId: receita.id, nomeReceita: receita.nome, receitasFeitas: 1, rendimento: 50,
+    custoTotalCent: 3250, custoUnitarioCent: 65, parcial: false,
+  }
+}
+
 describe('produções', () => {
   it('salva e lê de volta', async () => {
     const { producao } = await cenario()
@@ -148,5 +156,42 @@ describe('produções', () => {
     await naGaveta(GAVETA_PRODUCOES, 'readwrite', (g) => g.put({ id: 'prod_cru' }))
     const lista = await listarProducoes()
     expect(lista.some((p) => p.id === 'prod_cru')).toBe(true)
+  })
+
+  it('grava as linhas de embalagem junto da produção', async () => {
+    const p = await salvarProducao({
+      ...(await base()),
+      embalagens: [
+        { quantidade: 65, precoUnitarioCent: 5 },
+        { quantidade: 1, precoUnitarioCent: 250 },
+      ],
+    })
+    expect(p.embalagens).toEqual([
+      { quantidade: 65, precoUnitarioCent: 5 },
+      { quantidade: 1, precoUnitarioCent: 250 },
+    ])
+  })
+
+  // Produção da v1 não tem o campo. Ler como `undefined` faria o histórico e a próxima
+  // produção quebrarem num `.map` de undefined.
+  it('produção sem o campo lê como lista vazia, não como undefined', async () => {
+    const p = await salvarProducao({ ...(await base()) })
+    expect(p.embalagens).toEqual([])
+  })
+
+  it('recusa linha de embalagem com número que não é número', async () => {
+    await expect(salvarProducao({
+      ...(await base()), embalagens: [{ quantidade: 'abc', precoUnitarioCent: 250 }],
+    })).rejects.toThrow(/embalagem/i)
+  })
+
+  it('recusa linha de embalagem negativa', async () => {
+    const b = await base()
+    await expect(salvarProducao({
+      ...b, embalagens: [{ quantidade: -1, precoUnitarioCent: 250 }],
+    })).rejects.toThrow(/embalagem/i)
+    await expect(salvarProducao({
+      ...b, embalagens: [{ quantidade: 1, precoUnitarioCent: -250 }],
+    })).rejects.toThrow(/embalagem/i)
   })
 })

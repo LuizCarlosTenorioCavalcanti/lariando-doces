@@ -200,6 +200,28 @@ function centavosObrigatorios(valor) {
   return Number.isFinite(n) ? Math.round(n) : null
 }
 
+/** As linhas de embalagem que a calculadora mandou, limpas e conferidas.
+ *
+ *  Guarda a lista mesmo quando vazia: uma produção da v1 sem o campo vira `[]`, e assim a
+ *  tela nunca faz `.map` em cima de `undefined`. Recusa em vez de consertar em silêncio —
+ *  número torto aqui vira custo torto no histórico, que ninguém revisa depois. */
+function embalagensValidas(valor) {
+  if (valor === null || valor === undefined) return []
+  if (!Array.isArray(valor)) throw new Error('A embalagem precisa ser uma lista.')
+
+  return valor.map((linha) => {
+    const quantidade = Number(linha?.quantidade)
+    const precoUnitarioCent = Number(linha?.precoUnitarioCent)
+    if (!Number.isFinite(quantidade) || !Number.isFinite(precoUnitarioCent)) {
+      throw new Error('Tem uma linha de embalagem sem número.')
+    }
+    if (quantidade < 0 || precoUnitarioCent < 0) {
+      throw new Error('A embalagem não pode ter quantidade ou preço negativo.')
+    }
+    return { quantidade, precoUnitarioCent }
+  })
+}
+
 /** Grava o custo JÁ CALCULADO, e nunca recalcula na leitura.
  *
  *  É a decisão que dá sentido ao histórico: quando o leite condensado subir em novembro, a
@@ -227,6 +249,7 @@ export async function salvarProducao(dados) {
     custoTotalCent,
     custoUnitarioCent,
     parcial: Boolean(dados.parcial),
+    embalagens: embalagensValidas(dados?.embalagens),
     data: hojeLocal(),
     criadoEm: agora(),
   }
