@@ -10,6 +10,11 @@
   margin: -8px 0 20px;
 }
 
+/* Quantos e quanto cada um lado a lado: são uma frase só, e separá-los em duas linhas
+   faria parecer dois assuntos. */
+.linha-embalagem { display: flex; gap: 0.5rem; align-items: flex-start; }
+.linha-embalagem > .campo { flex: 1; }
+
 .resultado {
   background: var(--marca);
   color: #fff;
@@ -53,6 +58,9 @@
 
 .detalhe li { padding: 5px 0; }
 .detalhe li + li { border-top: 1px solid var(--borda); }
+
+/* A embalagem não é ingrediente. A linha mais apagada é o que deixa isso óbvio de relance. */
+.detalhe-embalagem { color: var(--texto-suave); }
 
 .calc-rodape {
   display: flex;

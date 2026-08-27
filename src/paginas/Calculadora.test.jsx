@@ -137,4 +137,57 @@ describe('Calculadora', () => {
     montar({ receitas: [] })
     expect(screen.queryByLabelText(/rendeu quantos/i)).toBe(null)
   })
+
+  it('sem tocar na embalagem, o custo é o de sempre', () => {
+    montar()
+    expect(screen.getByTestId('custo-total').textContent).toBe('R$ 32,50')
+  })
+
+  it('digitar quantos e quanto cada muda o total e o de cada um', async () => {
+    montar()
+    await userEvent.type(screen.getByLabelText(/quantas embalagens/i), '1')
+    await userEvent.type(screen.getByLabelText(/preço de cada embalagem/i), '2,50')
+
+    expect(screen.getByTestId('custo-total').textContent).toBe('R$ 35,00')
+    expect(screen.getByTestId('custo-cada').textContent).toBe('R$ 0,70')
+  })
+
+  it('só a quantidade preenchida marca parcial e diz o que falta', async () => {
+    montar()
+    await userEvent.type(screen.getByLabelText(/quantas embalagens/i), '1')
+
+    expect(screen.getByText(/falta o preço da embalagem/i)).toBeTruthy()
+  })
+
+  it('"+ embalagem" abre outra linha, para forminha e caixa na mesma produção', async () => {
+    montar()
+    await userEvent.type(screen.getByLabelText(/quantas embalagens/i), '65')
+    await userEvent.type(screen.getByLabelText(/preço de cada embalagem/i), '0,05')
+    await userEvent.click(screen.getByRole('button', { name: /\+ embalagem/i }))
+
+    const quantidades = screen.getAllByLabelText(/quantas embalagens/i)
+    const precos = screen.getAllByLabelText(/preço de cada embalagem/i)
+    expect(quantidades).toHaveLength(2)
+
+    await userEvent.type(quantidades[1], '1')
+    await userEvent.type(precos[1], '2,50')
+
+    // 3250 + 65×5 + 250 = 3825
+    expect(screen.getByTestId('custo-total').textContent).toBe('R$ 38,25')
+  })
+
+  it('o detalhamento separa a embalagem dos ingredientes', async () => {
+    montar()
+    await userEvent.type(screen.getByLabelText(/quantas embalagens/i), '1')
+    await userEvent.type(screen.getByLabelText(/preço de cada embalagem/i), '2,50')
+    await userEvent.click(screen.getByRole('button', { name: /ver ingredientes/i }))
+
+    expect(screen.getByText(/embalagem · 1 × R\$ 2,50 → R\$ 2,50/i)).toBeTruthy()
+  })
+
+  it('sem embalagem preenchida, o detalhamento não inventa linha', async () => {
+    montar()
+    await userEvent.click(screen.getByRole('button', { name: /ver ingredientes/i }))
+    expect(screen.queryByText(/embalagem ·/i)).toBe(null)
+  })
 })
