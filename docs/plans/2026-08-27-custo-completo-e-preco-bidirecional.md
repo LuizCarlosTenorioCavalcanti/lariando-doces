@@ -362,17 +362,21 @@ E os testes, dentro do `describe('produções')` existente:
   })
 
   it('recusa linha de embalagem com número que não é número', async () => {
+    const b = await base()
     await expect(salvarProducao({
-      ...BASE, embalagens: [{ quantidade: 'abc', precoUnitarioCent: 250 }],
+      ...b, embalagens: [{ quantidade: 'abc', precoUnitarioCent: 250 }],
     })).rejects.toThrow(/embalagem/i)
   })
 
+  // `base()` UMA vez por teste: cada chamada roda `cenario()`, que recria "Toddy" e
+  // "Brigadeiro" — e a segunda estouraria "nome repetido" antes de chegar na embalagem.
   it('recusa linha de embalagem negativa', async () => {
+    const b = await base()
     await expect(salvarProducao({
-      ...BASE, embalagens: [{ quantidade: -1, precoUnitarioCent: 250 }],
+      ...b, embalagens: [{ quantidade: -1, precoUnitarioCent: 250 }],
     })).rejects.toThrow(/embalagem/i)
     await expect(salvarProducao({
-      ...BASE, embalagens: [{ quantidade: 1, precoUnitarioCent: -250 }],
+      ...b, embalagens: [{ quantidade: 1, precoUnitarioCent: -250 }],
     })).rejects.toThrow(/embalagem/i)
   })
 ```
@@ -396,17 +400,33 @@ function embalagensValidas(valor) {
   if (valor === null || valor === undefined) return []
   if (!Array.isArray(valor)) throw new Error('A embalagem precisa ser uma lista.')
 
-  return valor.map((linha) => {
-    const quantidade = Number(linha?.quantidade)
-    const precoUnitarioCent = Number(linha?.precoUnitarioCent)
+  const linhas = []
+  for (const linha of valor) {
+    // A checagem é de PRESENÇA, e vem antes da de número, porque `Number(null)` e
+    // `Number('')` são `0` — e `0` passa em `Number.isFinite`. Sem isto, a linha em branco
+    // que o "+ embalagem" cria entra no banco como `{0, 0}`: embalagem fantasma no
+    // detalhamento do histórico e no preenchimento da próxima produção.
+    const temQtd = linha?.quantidade !== null && linha?.quantidade !== undefined && linha?.quantidade !== ''
+    const temPreco = linha?.precoUnitarioCent !== null && linha?.precoUnitarioCent !== undefined && linha?.precoUnitarioCent !== ''
+
+    if (!temQtd && !temPreco) continue
+    // Metade preenchida some do custo se for descartada, e custo que some em silêncio é o
+    // pior desfecho deste app. Recusa e diz o que fazer.
+    if (!temQtd || !temPreco) {
+      throw new Error('Tem uma linha de embalagem pela metade — preencha quantos e quanto cada um, ou deixe os dois em branco.')
+    }
+
+    const quantidade = Number(linha.quantidade)
+    const precoUnitarioCent = Number(linha.precoUnitarioCent)
     if (!Number.isFinite(quantidade) || !Number.isFinite(precoUnitarioCent)) {
       throw new Error('Tem uma linha de embalagem sem número.')
     }
     if (quantidade < 0 || precoUnitarioCent < 0) {
       throw new Error('A embalagem não pode ter quantidade ou preço negativo.')
     }
-    return { quantidade, precoUnitarioCent }
-  })
+    linhas.push({ quantidade, precoUnitarioCent })
+  }
+  return linhas
 }
 ```
 
