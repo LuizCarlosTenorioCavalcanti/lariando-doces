@@ -182,6 +182,7 @@ export function Calculadora({
         custoUnitarioCent: conta.custoUnitarioCent,
         parcial: conta.parcial,
         embalagens,
+        precoVendaCent: precoCent,
       })
       setSalvo(true)
       await aoGravado()
@@ -190,7 +191,7 @@ export function Calculadora({
     } finally {
       setSalvando(false)
     }
-  }, [salvando, receita, receitasFeitas, rendimentoEfetivo, conta, embalagens, aoGravado])
+  }, [salvando, receita, receitasFeitas, rendimentoEfetivo, conta, embalagens, precoCent, aoGravado])
 
   if (!receita) return null
 

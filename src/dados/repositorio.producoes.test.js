@@ -235,4 +235,23 @@ describe('produções', () => {
     })
     expect(p.embalagens).toEqual([{ quantidade: 1, precoUnitarioCent: 250 }])
   })
+
+  // Grava o PREÇO, não a margem, mesmo quando foi a margem que ela digitou. O preço é o
+  // fato — o que a cliente pagou. Margem e lucro são leituras dele contra um custo que muda
+  // com o tempo; guardar a margem faria o histórico responder "quanto eu cobrava?" com um
+  // número que se move.
+  it('grava o preço de venda escolhido', async () => {
+    const p = await salvarProducao({ ...(await base()), precoVendaCent: 195 })
+    expect(p.precoVendaCent).toBe(195)
+  })
+
+  it('produção sem preço decidido grava null, não zero', async () => {
+    const p = await salvarProducao({ ...(await base()) })
+    expect(p.precoVendaCent).toBe(null)
+  })
+
+  it('recusa preço de venda negativo', async () => {
+    await expect(salvarProducao({ ...(await base()), precoVendaCent: -100 }))
+      .rejects.toThrow(/preço/i)
+  })
 })

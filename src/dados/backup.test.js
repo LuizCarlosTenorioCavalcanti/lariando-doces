@@ -244,6 +244,39 @@ describe('validarBackup', () => {
     expect(negativo.ok).toBe(false)
     expect(negativo.motivo).toMatch(/embalagem/i)
   })
+
+  it('recusa produção com preço de venda que não é número', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', precoVendaCent: 'muito' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/preço/i)
+  })
+
+  // A checagem de preço tem que vir ANTES do `continue` de `embalagens` ausente — produção
+  // sem embalagem (pote retornável) é o caso comum, e não pode escapar da validação de
+  // preço por não ter o campo `embalagens`.
+  it('recusa produção sem embalagens mas com preço de venda corrompido', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', precoVendaCent: 'muito' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/preço/i)
+  })
+
+  // Mesma armadilha que `embalagensValidas` já corrige: `Number(null)` é `0`, que passa em
+  // `Number.isFinite`. Uma linha `{null, null}` vinda de arquivo tem que ser recusada, não
+  // aceita como zero.
+  it('recusa linha de embalagem com quantidade e preço null vindos de arquivo', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', embalagens: [{ quantidade: null, precoUnitarioCent: null }] }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/embalagem/i)
+  })
 })
 
 describe('resumo', () => {

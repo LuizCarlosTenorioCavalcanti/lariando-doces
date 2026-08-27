@@ -259,6 +259,13 @@ export async function salvarProducao(dados) {
     throw new Error('O custo da produção não pode ser negativo.')
   }
 
+  const precoVendaCent = dados?.precoVendaCent === null || dados?.precoVendaCent === undefined
+    ? null
+    : centavosObrigatorios(dados.precoVendaCent)
+  if (precoVendaCent !== null && precoVendaCent < 0) {
+    throw new Error('O preço de venda não pode ser negativo.')
+  }
+
   const registro = {
     id: novoId('prod'),
     receitaId: dados.receitaId,
@@ -269,6 +276,7 @@ export async function salvarProducao(dados) {
     custoUnitarioCent,
     parcial: Boolean(dados.parcial),
     embalagens: embalagensValidas(dados?.embalagens),
+    precoVendaCent,
     data: hojeLocal(),
     criadoEm: agora(),
   }

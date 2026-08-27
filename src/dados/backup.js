@@ -113,13 +113,29 @@ export function validarBackup(obj) {
   // derruba o render do histórico. Recusar aqui é a última chance de dizer o motivo antes
   // de já ter apagado o que estava salvo.
   for (const registro of obj.producoes) {
+    // Checagem de preço vem ANTES do `continue` de embalagens ausentes: produção sem
+    // embalagem (pote retornável) é o caso comum, e não pode escapar desta validação.
+    if (registro.precoVendaCent !== null && registro.precoVendaCent !== undefined) {
+      const preco = Number(registro.precoVendaCent)
+      if (!Number.isFinite(preco) || preco < 0) {
+        return { ok: false, motivo: 'O backup tem uma produção com preço de venda inválido.' }
+      }
+    }
+
     if (registro.embalagens === null || registro.embalagens === undefined) continue
     if (!Array.isArray(registro.embalagens)) {
       return { ok: false, motivo: 'O backup tem uma produção com a embalagem corrompida.' }
     }
+    // Presença é validada ANTES de número, como em `embalagensValidas` no repositorio.js:
+    // `Number(null)` é `0` e passa em `Number.isFinite`, deixando uma linha fantasma passar.
     for (const linha of registro.embalagens) {
-      const quantidade = Number(linha?.quantidade)
-      const preco = Number(linha?.precoUnitarioCent)
+      const qtdVazia = linha?.quantidade === null || linha?.quantidade === undefined || linha?.quantidade === ''
+      const precoVazio = linha?.precoUnitarioCent === null || linha?.precoUnitarioCent === undefined || linha?.precoUnitarioCent === ''
+      if (qtdVazia || precoVazio) {
+        return { ok: false, motivo: 'O backup tem uma linha de embalagem com número inválido.' }
+      }
+      const quantidade = Number(linha.quantidade)
+      const preco = Number(linha.precoUnitarioCent)
       if (!Number.isFinite(quantidade) || !Number.isFinite(preco) || quantidade < 0 || preco < 0) {
         return { ok: false, motivo: 'O backup tem uma linha de embalagem com número inválido.' }
       }
