@@ -194,4 +194,45 @@ describe('produções', () => {
       ...b, embalagens: [{ quantidade: 1, precoUnitarioCent: -250 }],
     })).rejects.toThrow(/embalagem/i)
   })
+
+  it('linha com os dois campos null é descartada', async () => {
+    const p = await salvarProducao({
+      ...(await base()),
+      embalagens: [{ quantidade: null, precoUnitarioCent: null }],
+    })
+    expect(p.embalagens).toEqual([])
+  })
+
+  it('linha com os dois campos vazio é descartada', async () => {
+    const p = await salvarProducao({
+      ...(await base()),
+      embalagens: [{ quantidade: '', precoUnitarioCent: '' }],
+    })
+    expect(p.embalagens).toEqual([])
+  })
+
+  it('linha pela metade recusa — quantidade preenchida mas preço vazio', async () => {
+    await expect(salvarProducao({
+      ...(await base()),
+      embalagens: [{ quantidade: 65, precoUnitarioCent: null }],
+    })).rejects.toThrow(/pela metade/i)
+  })
+
+  it('linha pela metade recusa — preço preenchido mas quantidade vazia', async () => {
+    await expect(salvarProducao({
+      ...(await base()),
+      embalagens: [{ quantidade: null, precoUnitarioCent: 5 }],
+    })).rejects.toThrow(/pela metade/i)
+  })
+
+  it('linha em branco misturada com linha boa grava só a boa', async () => {
+    const p = await salvarProducao({
+      ...(await base()),
+      embalagens: [
+        { quantidade: null, precoUnitarioCent: null },
+        { quantidade: 1, precoUnitarioCent: 250 },
+      ],
+    })
+    expect(p.embalagens).toEqual([{ quantidade: 1, precoUnitarioCent: 250 }])
+  })
 })

@@ -204,22 +204,40 @@ function centavosObrigatorios(valor) {
  *
  *  Guarda a lista mesmo quando vazia: uma produção da v1 sem o campo vira `[]`, e assim a
  *  tela nunca faz `.map` em cima de `undefined`. Recusa em vez de consertar em silêncio —
- *  número torto aqui vira custo torto no histórico, que ninguém revisa depois. */
+ *  número torto aqui vira custo torto no histórico, que ninguém revisa depois.
+ *
+ *  Presença é validada ANTES de número: `Number(null)` é `0` e passa em `Number.isFinite`,
+ *  deixando linha fantasma na produção. Então: ambos em branco → descarta; um só preenchido →
+ *  rejeita; ambos preenchidos → valida. */
 function embalagensValidas(valor) {
   if (valor === null || valor === undefined) return []
   if (!Array.isArray(valor)) throw new Error('A embalagem precisa ser uma lista.')
 
-  return valor.map((linha) => {
-    const quantidade = Number(linha?.quantidade)
-    const precoUnitarioCent = Number(linha?.precoUnitarioCent)
+  const resultado = []
+  for (const linha of valor) {
+    const qtdVazia = linha?.quantidade === null || linha?.quantidade === undefined || linha?.quantidade === ''
+    const precoVazio = linha?.precoUnitarioCent === null || linha?.precoUnitarioCent === undefined || linha?.precoUnitarioCent === ''
+
+    // Ambos em branco: descarta a linha em silêncio (linha do botão "+ embalagem" não usada)
+    if (qtdVazia && precoVazio) continue
+
+    // Um só preenchido: recusa (custo que desaparece em silêncio é pior que embalagem fantasma)
+    if (qtdVazia || precoVazio) {
+      throw new Error('Tem uma linha de embalagem pela metade — preencha quantos e quanto cada um, ou deixe os dois em branco.')
+    }
+
+    // Ambos preenchidos: valida número e negatividade
+    const quantidade = Number(linha.quantidade)
+    const precoUnitarioCent = Number(linha.precoUnitarioCent)
     if (!Number.isFinite(quantidade) || !Number.isFinite(precoUnitarioCent)) {
       throw new Error('Tem uma linha de embalagem sem número.')
     }
     if (quantidade < 0 || precoUnitarioCent < 0) {
       throw new Error('A embalagem não pode ter quantidade ou preço negativo.')
     }
-    return { quantidade, precoUnitarioCent }
-  })
+    resultado.push({ quantidade, precoUnitarioCent })
+  }
+  return resultado
 }
 
 /** Grava o custo JÁ CALCULADO, e nunca recalcula na leitura.
