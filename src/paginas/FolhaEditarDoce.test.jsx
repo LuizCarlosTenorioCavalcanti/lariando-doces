@@ -57,14 +57,13 @@ describe('FolhaEditarDoce — cadastrar', () => {
     expect(screen.getAllByText('g').length).toBeGreaterThan(0)
   })
 
-  it('grava a receita com nome, rendimento, margem e itens', async () => {
+  it('grava a receita com nome, rendimento e itens', async () => {
     const toddy = await salvarIngrediente(TODDY)
     const aoGravado = vi.fn()
     montar({ ingredientes: [toddy], aoGravado })
 
     await userEvent.type(screen.getByLabelText('Nome do doce'), 'Brigadeiro')
     await userEvent.type(screen.getByLabelText(/rende quantos/i), '50')
-    await userEvent.type(screen.getByLabelText(/margem/i), '200')
     await userEvent.type(screen.getByLabelText('Ingrediente 1'), 'Toddy')
     await userEvent.type(screen.getByLabelText('Quantidade 1'), '80')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar doce' }))
@@ -74,8 +73,12 @@ describe('FolhaEditarDoce — cadastrar', () => {
     expect(receitas).toHaveLength(1)
     expect(receitas[0].nome).toBe('Brigadeiro')
     expect(receitas[0].rendimentoBase).toBe(50)
-    expect(receitas[0].margemPct).toBe(200)
     expect(receitas[0].itens).toEqual([{ ingredienteId: toddy.id, quantidade: 80 }])
+  })
+
+  it('não pede mais margem de lucro — isso se decide na calculadora agora', () => {
+    montar()
+    expect(screen.queryByLabelText(/margem de lucro/i)).toBe(null)
   })
 
   it('aceita quantidade com vírgula', async () => {
@@ -218,7 +221,6 @@ describe('FolhaEditarDoce — editar', () => {
 
     expect(screen.getByLabelText('Nome do doce').value).toBe('Brigadeiro')
     expect(screen.getByLabelText(/rende quantos/i).value).toBe('50')
-    expect(screen.getByLabelText(/margem/i).value).toBe('200')
     expect(screen.getByLabelText('Ingrediente 1').value).toBe('Toddy')
     expect(screen.getByLabelText('Quantidade 1').value).toBe('80')
   })

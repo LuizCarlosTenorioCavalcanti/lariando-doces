@@ -106,19 +106,6 @@ export async function salvarReceita(dados, id) {
     throw new Error('O rendimento da receita precisa ser maior que zero.')
   }
 
-  const margem = dados?.margemPct
-  const margemPct =
-    margem === null || margem === undefined || margem === '' ? null : Number(margem)
-  if (margemPct !== null && !Number.isFinite(margemPct)) {
-    throw new Error('A margem não é um número.')
-  }
-  // Vender com prejuízo é decisão dela (queimar estoque, doce de véspera), então margem
-  // negativa passa. O que não existe é preço de venda negativo: em −100% o preço zera, e
-  // abaixo disso a tela mostra o doce pagando para sair. Isso é dedo errado no campo.
-  if (margemPct !== null && margemPct <= -100) {
-    throw new Error('A margem não pode ser -100% ou menos — isso deixaria o preço em zero ou negativo.')
-  }
-
   const itens = (dados?.itens ?? []).map((item) => {
     if (!item?.ingredienteId) throw new Error('Tem uma linha sem ingrediente escolhido.')
     // `Number(null)` e `Number('')` são `0`, e `0` passa em `Number.isFinite`. Sem esta
@@ -148,6 +135,20 @@ export async function salvarReceita(dados, id) {
 
   const anterior = id ? existentes.find((r) => r.id === id) : null
   if (id && !anterior) throw new Error('Doce não encontrado.')
+
+  // A margem saiu do cadastro e é decidida na calculadora, mas continua no dado: é dela que
+  // sai o preço de um doce nunca vendido (migração da v1). Numa edição, o valor gravado
+  // manda — o formulário não fala mais sobre isso, e ler o silêncio dele como `null`
+  // apagaria o preço do doce.
+  const margem = anterior ? anterior.margemPct : dados?.margemPct
+  const margemPct =
+    margem === null || margem === undefined || margem === '' ? null : Number(margem)
+  if (margemPct !== null && !Number.isFinite(margemPct)) {
+    throw new Error('A margem não é um número.')
+  }
+  if (margemPct !== null && margemPct <= -100) {
+    throw new Error('A margem não pode ser -100% ou menos — isso deixaria o preço em zero ou negativo.')
+  }
 
   const registro = {
     id: id ?? novoId('rec'),

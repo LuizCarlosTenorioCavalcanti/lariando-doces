@@ -32,9 +32,6 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
   const [rendimentoBase, setRendimentoBase] = useState(
     receita ? String(receita.rendimentoBase) : '',
   )
-  const [margem, setMargem] = useState(
-    receita?.margemPct === null || receita?.margemPct === undefined ? '' : String(receita.margemPct),
-  )
   const [linhas, setLinhas] = useState(() => linhasIniciais(receita, ingredientes))
   const [erro, setErro] = useState(null)
   const [salvando, setSalvando] = useState(false)
@@ -99,7 +96,6 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
         {
           nome,
           rendimentoBase: paraNumero(rendimentoBase),
-          margemPct: margem.trim() === '' ? null : paraNumero(margem),
           itens,
         },
         receita?.id,
@@ -153,14 +149,6 @@ export function FolhaEditarDoce({ aberta, receita, ingredientes, aoFechar, aoGra
         dica="É o normal desse doce. Serve de referência quando o rendimento sair diferente."
       />
 
-      <CampoNumero
-        id="doce-margem"
-        rotulo="Margem de lucro"
-        valor={margem}
-        aoMudar={setMargem}
-        sufixo="%"
-        dica="Deixe em branco se ainda não decidiu o preço de venda."
-      />
 
       <h3 className="secao">Ingredientes</h3>
 

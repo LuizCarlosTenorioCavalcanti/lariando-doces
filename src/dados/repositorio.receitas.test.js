@@ -135,6 +135,26 @@ describe('receitas', () => {
     expect(r.margemPct).toBe(-30)
   })
 
+  // A margem saiu da tela, mas continua no dado: é dela que o passo 2 da migração tira o
+  // preço de um doce nunca vendido. Se a edição apagasse o valor, o doce perderia o preço
+  // que mostrava na primeira vez que ela mexesse em qualquer outra coisa.
+  it('editar o doce preserva a margem gravada, mesmo sem o formulário mandar', async () => {
+    const criada = await salvarReceita({
+      nome: 'Brigadeiro', rendimentoBase: 50, margemPct: 200, itens: [],
+    })
+    const editada = await salvarReceita(
+      { nome: 'Brigadeiro', rendimentoBase: 60, itens: [] },
+      criada.id,
+    )
+    expect(editada.margemPct).toBe(200)
+    expect(editada.rendimentoBase).toBe(60)
+  })
+
+  it('doce novo sem margem nasce com margem null', async () => {
+    const r = await salvarReceita({ nome: 'Beijinho', rendimentoBase: 40, itens: [] })
+    expect(r.margemPct).toBe(null)
+  })
+
   it('editar mantém o id e o criadoEm', async () => {
     const { receita } = await comBrigadeiro()
     const editada = await salvarReceita(
