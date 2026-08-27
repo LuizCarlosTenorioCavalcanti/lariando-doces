@@ -385,6 +385,22 @@ describe('Calculadora', () => {
     expect(screen.getByTestId('embalagem-chip').textContent).toMatch(/1 embalagem · R\$ 2,50/)
   })
 
+  // "embalagem" pluraliza com "ns", não com "s" simples — "embalagems" quebraria a regra
+  // de ouro do app (falar como ela fala) bem na tela principal, e no caminho PADRÃO (o
+  // preenchimento automático quase sempre traz mais de uma).
+  it('o chip pluraliza "embalagens" corretamente com mais de uma unidade', () => {
+    montar({
+      producoes: [{
+        id: 'prod_1', receitaId: 'rec_1', nomeReceita: 'Brigadeiro', receitasFeitas: 1,
+        rendimento: 50, custoTotalCent: 3500, custoUnitarioCent: 70, parcial: false,
+        precoVendaCent: 300, embalagens: [{ quantidade: 65, precoUnitarioCent: 5 }],
+        data: '2026-08-20', criadoEm: '2026-08-20T10:00:00.000Z',
+      }],
+    })
+    expect(screen.getByTestId('embalagem-chip').textContent).toMatch(/65 embalagens · R\$ 0,05/)
+    expect(screen.getByTestId('embalagem-chip').textContent).not.toMatch(/embalagems/)
+  })
+
   it('sem nada preenchido, o chip fechado convida a abrir', () => {
     montar()
     expect(screen.getByTestId('embalagem-chip').textContent).toMatch(/\+ embalagem/)

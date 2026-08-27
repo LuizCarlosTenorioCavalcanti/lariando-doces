@@ -20,8 +20,8 @@ function resumoEmbalagem(linhas) {
     const qtd = l.quantidade.trim() === '' ? '?' : l.quantidade
     const precoCent = l.preco.trim() === '' ? null : paraCentavos(l.preco)
     const precoTexto = precoCent === null ? '?' : formatBRL(precoCent)
-    const plural = qtd === '1' ? '' : 's'
-    return `${qtd} embalagem${plural} · ${precoTexto}`
+    const embalagemTexto = qtd === '1' ? 'embalagem' : 'embalagens'
+    return `${qtd} ${embalagemTexto} · ${precoTexto}`
   })
   return `${partes.join(' + ')} ›`
 }

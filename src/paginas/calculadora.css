@@ -50,7 +50,7 @@
 .resultado .campo-caixa { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .3); }
 .resultado .campo-caixa:focus-within { border-color: #fff; }
 .resultado .campo-caixa input { color: #fff; }
-.resultado .campo-fixo { color: rgba(255, 255, 255, .75); }
+.resultado .campo-fixo { color: rgba(255, 255, 255, .93); }
 .resultado .campo-dica { color: rgba(255, 255, 255, .75); }
 
 .calc-detalhe {
