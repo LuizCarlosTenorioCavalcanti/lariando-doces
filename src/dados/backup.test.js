@@ -196,6 +196,54 @@ describe('validarBackup', () => {
     })
     expect(r).toEqual({ ok: true })
   })
+
+  // `VERSAO_BACKUP` continua 1 de propósito: subir para 2 faria o app recusar os backups
+  // que ela já tem guardados. Os campos novos são todos opcionais.
+  it('aceita produção da v1, sem o campo de embalagem', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', nomeReceita: 'Brigadeiro' }],
+    })
+    expect(r).toEqual({ ok: true })
+  })
+
+  it('aceita produção com embalagem bem formada', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{
+        id: 'prod_1', nomeReceita: 'Brigadeiro',
+        embalagens: [{ quantidade: 1, precoUnitarioCent: 250 }],
+      }],
+    })
+    expect(r).toEqual({ ok: true })
+  })
+
+  // Produção com embalagem torta derruba o render do histórico — mesma tela branca que a
+  // validação de `itens` de receita já existe para evitar.
+  it('recusa embalagem que não é lista', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', embalagens: 'nenhuma' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/embalagem/i)
+  })
+
+  it('recusa linha de embalagem sem número ou com número negativo', () => {
+    const semNumero = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', embalagens: [{ quantidade: 'abc', precoUnitarioCent: 250 }] }],
+    })
+    expect(semNumero.ok).toBe(false)
+    expect(semNumero.motivo).toMatch(/embalagem/i)
+
+    const negativo = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', embalagens: [{ quantidade: -1, precoUnitarioCent: 250 }] }],
+    })
+    expect(negativo.ok).toBe(false)
+    expect(negativo.motivo).toMatch(/embalagem/i)
+  })
 })
 
 describe('resumo', () => {

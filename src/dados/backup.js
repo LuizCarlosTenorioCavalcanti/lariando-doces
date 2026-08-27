@@ -109,6 +109,23 @@ export function validarBackup(obj) {
     }
   }
 
+  // Produção com embalagem malformada passa nas checagens de cima — elas só olham `id` — e
+  // derruba o render do histórico. Recusar aqui é a última chance de dizer o motivo antes
+  // de já ter apagado o que estava salvo.
+  for (const registro of obj.producoes) {
+    if (registro.embalagens === null || registro.embalagens === undefined) continue
+    if (!Array.isArray(registro.embalagens)) {
+      return { ok: false, motivo: 'O backup tem uma produção com a embalagem corrompida.' }
+    }
+    for (const linha of registro.embalagens) {
+      const quantidade = Number(linha?.quantidade)
+      const preco = Number(linha?.precoUnitarioCent)
+      if (!Number.isFinite(quantidade) || !Number.isFinite(preco) || quantidade < 0 || preco < 0) {
+        return { ok: false, motivo: 'O backup tem uma linha de embalagem com número inválido.' }
+      }
+    }
+  }
+
   return { ok: true }
 }
 
