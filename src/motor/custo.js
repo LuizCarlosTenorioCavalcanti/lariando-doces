@@ -90,6 +90,34 @@ export function precoSugerido(custoUnitarioCent, margemPct) {
   return Math.round(custoUnitarioCent * (1 + margem / 100))
 }
 
+/** A volta de `precoSugerido`: preço de venda → margem, em porcentagem.
+ *
+ *  Devolve o número CHEIO, sem arredondar. Quem mostra na tela arredonda para % inteiro; a
+ *  conta fica com a precisão toda para a ida e a volta fecharem. Arredondar aqui faria o
+ *  preço "pular" sob o dedo dela quando os dois campos estão ligados. */
+export function margemDoPreco(custoUnitarioCent, precoCent) {
+  if (custoUnitarioCent === null || custoUnitarioCent === undefined) return null
+  if (precoCent === null || precoCent === undefined) return null
+  if (!Number.isFinite(custoUnitarioCent) || !Number.isFinite(precoCent)) return null
+  // Margem é lucro POR custo. Sem custo não há por quê dividir, e `Infinity` na tela é pior
+  // que travessão: parece número.
+  if (custoUnitarioCent === 0) return null
+
+  return ((precoCent - custoUnitarioCent) / custoUnitarioCent) * 100
+}
+
+/** A volta de `lucroDaProducao`: quanto ela quer tirar da fornada → por quanto vender cada um. */
+export function precoDoLucro(custoUnitarioCent, lucroCent, rendimento) {
+  if (custoUnitarioCent === null || custoUnitarioCent === undefined) return null
+  if (lucroCent === null || lucroCent === undefined) return null
+  if (!Number.isFinite(custoUnitarioCent) || !Number.isFinite(lucroCent)) return null
+
+  const rend = Number(rendimento)
+  if (!Number.isFinite(rend) || rend <= 0) return null
+
+  return Math.round(custoUnitarioCent + lucroCent / rend)
+}
+
 /** Lucro da fornada inteira. */
 export function lucroDaProducao(custoUnitarioCent, precoCent, rendimento) {
   if (custoUnitarioCent === null || precoCent === null) return null

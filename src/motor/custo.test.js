@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   custoDoItem, custoDaReceita, custoDaProducao,
   precoSugerido, lucroDaProducao, rendimentoSuspeito, custoDasEmbalagens,
+  margemDoPreco, precoDoLucro,
 } from './custo'
 
 const ing = (id, nome, unidade, embalagemQtd, embalagemPrecoCent) =>
@@ -363,5 +364,54 @@ describe('custoDasEmbalagens', () => {
       { quantidade: 1, precoUnitarioCent: 250 },
       { quantidade: 65, precoUnitarioCent: null },
     ])).toEqual({ totalCent: 250, incompleta: true })
+  })
+})
+
+describe('margemDoPreco', () => {
+  it('R$ 0,65 de custo vendido a R$ 1,95 é 200% de margem', () => {
+    expect(margemDoPreco(65, 195)).toBe(200)
+  })
+
+  it('fecha a ida e a volta: preço → margem → preço devolve o mesmo preço', () => {
+    expect(precoSugerido(65, margemDoPreco(65, 195))).toBe(195)
+  })
+
+  it('vender abaixo do custo dá margem negativa, que é informação e não erro', () => {
+    expect(margemDoPreco(100, 70)).toBe(-30)
+  })
+
+  // Divisão por zero. Acontece com doce cujos ingredientes estão todos sem preço.
+  it('custo zero não tem margem — travessão, não Infinity', () => {
+    expect(margemDoPreco(0, 195)).toBe(null)
+  })
+
+  it('sem custo ou sem preço não há margem', () => {
+    expect(margemDoPreco(null, 195)).toBe(null)
+    expect(margemDoPreco(65, null)).toBe(null)
+  })
+})
+
+describe('precoDoLucro', () => {
+  it('quero R$ 65,00 de lucro em 50 unidades que custam R$ 0,65: vendo a R$ 1,95', () => {
+    expect(precoDoLucro(65, 6500, 50)).toBe(195)
+  })
+
+  it('fecha a ida e a volta: lucro → preço → lucro devolve o mesmo lucro', () => {
+    expect(lucroDaProducao(65, precoDoLucro(65, 6500, 50), 50)).toBe(6500)
+  })
+
+  it('lucro zero é vender pelo custo', () => {
+    expect(precoDoLucro(65, 0, 50)).toBe(65)
+  })
+
+  // Lucro de fornada sem fornada não existe.
+  it('sem rendimento não dá para tirar preço do lucro', () => {
+    expect(precoDoLucro(65, 6500, 0)).toBe(null)
+    expect(precoDoLucro(65, 6500, null)).toBe(null)
+  })
+
+  it('sem custo ou sem lucro não há preço', () => {
+    expect(precoDoLucro(null, 6500, 50)).toBe(null)
+    expect(precoDoLucro(65, null, 50)).toBe(null)
   })
 })
