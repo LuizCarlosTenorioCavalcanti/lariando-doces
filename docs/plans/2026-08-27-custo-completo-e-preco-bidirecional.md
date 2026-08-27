@@ -1068,17 +1068,24 @@ sentido: o bloco agora aparece sempre que há custo) e acrescentar:
     expect(screen.getByText(/zero ou negativo/i)).toBeTruthy()
   })
 
-  // Lucro de fornada sem fornada não existe. Preço e margem continuam funcionando.
-  it('rendimento zerado deixa o lucro em branco sem derrubar preço e margem', async () => {
+  // Custo unitário ZERO (não "sem custo"): todos os ingredientes sem preço. Preço e lucro
+  // funcionam; margem é divisão por zero e fica em branco em vez de virar Infinity.
+  it('doce com todo ingrediente sem preço mostra preço e lucro, mas margem em branco', async () => {
+    montar({ ingredientesPorId: {} })
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '1,95')
+
+    expect(screen.getByLabelText(/margem/i).value).toBe('')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('97,50')
+  })
+
+  // Rendimento zero é o ÚNICO caminho para custo unitário null: sem rendimento não há por
+  // quantos dividir, e sem custo por unidade não há o que precificar.
+  it('rendimento zerado esconde o bloco de venda inteiro', async () => {
     montar()
     await userEvent.clear(screen.getByLabelText(/rendeu quantos/i))
     await userEvent.type(screen.getByLabelText(/rendeu quantos/i), '0')
 
-    expect(screen.getByLabelText(/lucro/i).value).toBe('')
-  })
-
-  it('sem custo calculável não mostra bloco de venda nenhum', () => {
-    montar({ ingredientesPorId: {} })
     expect(screen.queryByLabelText(/vender a/i)).toBe(null)
   })
 ```

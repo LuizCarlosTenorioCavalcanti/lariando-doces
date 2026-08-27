@@ -160,8 +160,10 @@ centavos, e **quem arredonda é sempre o derivado, nunca o digitado**.
 - **`C === 0`**: preço e lucro funcionam; a margem é indefinida (divisão por zero) e mostra
   travessão. Não é hipótese de laboratório — acontece com doce cujos ingredientes estão
   todos sem preço.
-- **`R` ausente ou zero**: preço e margem funcionam; o lucro mostra travessão, porque lucro
-  de fornada sem fornada não existe.
+- **`R` ausente ou zero**: o bloco de venda inteiro some. Esta borda foi **corrigida na
+  execução** (2026-08-27): a spec dizia "preço e margem funcionam, o lucro mostra travessão",
+  mas isso é inalcançável — sem rendimento não há por quantos dividir, então `C` já é `null`
+  e recai na borda de cima. Rendimento zero é, aliás, o único caminho para `C === null`.
 - **Margem digitada ≤ −100%**: preço e lucro mostram travessão e aparece o aviso "Margem de
   −100% ou menos deixaria o preço em zero ou negativo." Ela pode ter digitado um "−" a mais.
 - **Preço digitado negativo**: mesmo tratamento — travessão nos derivados e aviso.
