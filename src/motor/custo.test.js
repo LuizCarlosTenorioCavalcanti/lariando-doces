@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   custoDoItem, custoDaReceita, custoDaProducao,
-  precoSugerido, lucroDaProducao, rendimentoSuspeito,
+  precoSugerido, lucroDaProducao, rendimentoSuspeito, custoDasEmbalagens,
 } from './custo'
 
 const ing = (id, nome, unidade, embalagemQtd, embalagemPrecoCent) =>
@@ -263,5 +263,64 @@ describe('rendimentoSuspeito', () => {
     expect(rendimentoSuspeito({
       rendimentoBase: 0, temProducaoAnterior: true, receitasFeitas: 1, rendimento: 50,
     })).toBe(false)
+  })
+})
+
+describe('custoDasEmbalagens', () => {
+  // Zero aqui é uma AFIRMAÇÃO verdadeira ("mandei em pote retornável"), não um erro. É a
+  // única exceção à regra do arquivo de nunca devolver 0 num caso sem informação.
+  it('sem embalagem nenhuma custa zero, e isso não é "não sei"', () => {
+    expect(custoDasEmbalagens([])).toEqual({ totalCent: 0, incompleta: false })
+    expect(custoDasEmbalagens(null)).toEqual({ totalCent: 0, incompleta: false })
+    expect(custoDasEmbalagens(undefined)).toEqual({ totalCent: 0, incompleta: false })
+  })
+
+  it('multiplica quantos pelo preço de cada um', () => {
+    expect(custoDasEmbalagens([{ quantidade: 65, precoUnitarioCent: 5 }]))
+      .toEqual({ totalCent: 325, incompleta: false })
+  })
+
+  it('soma várias linhas — forminha e caixa na mesma produção', () => {
+    const r = custoDasEmbalagens([
+      { quantidade: 65, precoUnitarioCent: 5 },
+      { quantidade: 1, precoUnitarioCent: 250 },
+    ])
+    expect(r).toEqual({ totalCent: 575, incompleta: false })
+  })
+
+  // A linha que o "+ embalagem" acabou de criar não pode acender alarme.
+  it('linha totalmente em branco é ignorada em silêncio', () => {
+    expect(custoDasEmbalagens([{ quantidade: null, precoUnitarioCent: null }]))
+      .toEqual({ totalCent: 0, incompleta: false })
+    expect(custoDasEmbalagens([{ quantidade: '', precoUnitarioCent: '' }]))
+      .toEqual({ totalCent: 0, incompleta: false })
+  })
+
+  // No meio da digitação ela tem metade preenchida. Contar como zero esconderia custo.
+  it('linha pela metade marca incompleta e não entra na soma, nos dois sentidos', () => {
+    expect(custoDasEmbalagens([{ quantidade: 65, precoUnitarioCent: null }]))
+      .toEqual({ totalCent: 0, incompleta: true })
+    expect(custoDasEmbalagens([{ quantidade: null, precoUnitarioCent: 5 }]))
+      .toEqual({ totalCent: 0, incompleta: true })
+  })
+
+  it('negativo não entra e marca incompleta — dedo errado não barateia o doce', () => {
+    expect(custoDasEmbalagens([{ quantidade: -1, precoUnitarioCent: 250 }]))
+      .toEqual({ totalCent: 0, incompleta: true })
+    expect(custoDasEmbalagens([{ quantidade: 1, precoUnitarioCent: -250 }]))
+      .toEqual({ totalCent: 0, incompleta: true })
+  })
+
+  // Zero caixas é uma resposta, não uma falta de resposta.
+  it('quantidade zero é válida e custa zero, sem marcar incompleta', () => {
+    expect(custoDasEmbalagens([{ quantidade: 0, precoUnitarioCent: 250 }]))
+      .toEqual({ totalCent: 0, incompleta: false })
+  })
+
+  it('uma linha boa e uma pela metade: soma a boa e ainda assim marca incompleta', () => {
+    expect(custoDasEmbalagens([
+      { quantidade: 1, precoUnitarioCent: 250 },
+      { quantidade: 65, precoUnitarioCent: null },
+    ])).toEqual({ totalCent: 250, incompleta: true })
   })
 })

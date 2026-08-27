@@ -97,6 +97,53 @@ export function lucroDaProducao(custoUnitarioCent, precoCent, rendimento) {
   return Math.round((precoCent - custoUnitarioCent) * rend)
 }
 
+/** Um campo preenchido vira número; vazio, em branco ou ilegível vira `null`.
+ *  Distinguir "não preencheu" de "preencheu zero" é o que separa a linha que o
+ *  "+ embalagem" acabou de criar da linha que diz "não usei caixa nenhuma". */
+function numeroPreenchido(valor) {
+  if (valor === null || valor === undefined || valor === '') return null
+  const n = Number(valor)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Custo da embalagem de UMA produção, em centavos.
+ *
+ *  A embalagem não é cadastrada em lugar nenhum: ela digita quantos e quanto custou cada um,
+ *  na hora. É o mesmo campo para a forminha (65 × R$ 0,05) e para a caixa (1 × R$ 2,50).
+ *
+ *  Lista vazia devolve `0`, e aqui isso é DE PROPÓSITO — o contrário da regra de
+ *  `custoDoItem`. Ingrediente sem preço é informação que FALTA, e virar zero esconderia
+ *  custo. Embalagem sem linha é informação que EXISTE: ela mandou em pote retornável, e
+ *  retornável custa zero mesmo. */
+export function custoDasEmbalagens(embalagens) {
+  let totalCent = 0
+  let incompleta = false
+
+  for (const linha of embalagens ?? []) {
+    const quantidade = numeroPreenchido(linha?.quantidade)
+    const preco = numeroPreenchido(linha?.precoUnitarioCent)
+
+    // Nada preenchido: é a linha recém-criada pelo "+ embalagem". Alarme aqui ensinaria
+    // ela a ignorar o alarme.
+    if (quantidade === null && preco === null) continue
+
+    // Metade preenchida é o estado de quem está digitando agora. Somar só a metade que dá
+    // (tratando a outra como zero) esconderia custo em silêncio, que é o pior desfecho.
+    if (quantidade === null || preco === null) {
+      incompleta = true
+      continue
+    }
+    if (quantidade < 0 || preco < 0) {
+      incompleta = true
+      continue
+    }
+
+    totalCent += quantidade * preco
+  }
+
+  return { totalCent, incompleta }
+}
+
 /** Quanto o rendimento pode fugir do normal antes de virar suspeita. Enrolar maior ou
  *  menor muda o rendimento em 10~20% num dia qualquer; 40% já não é a mão, é o dedo. */
 export const TOLERANCIA_RENDIMENTO = 0.4
