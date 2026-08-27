@@ -81,13 +81,103 @@ describe('Calculadora', () => {
 
   it('mostra preço de venda e lucro, e a conta fecha a olho', () => {
     montar()
-    expect(screen.getByTestId('preco-venda').textContent).toBe('R$ 1,95')
-    expect(screen.getByTestId('lucro').textContent).toBe('R$ 65,00')
+    expect(screen.getByLabelText(/vender a/i).value).toBe('1,95')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('65,00')
   })
 
-  it('sem margem cadastrada, não mostra bloco de venda', () => {
+  // Este mudou de sentido, e o nome tem que mudar junto: o bloco de venda não some mais por
+  // falta de margem — ele aparece vazio, esperando ela decidir o preço.
+  it('doce sem margem da v1 mostra o bloco de venda vazio, não escondido', () => {
     montar({ receitas: [{ ...BRIGADEIRO, margemPct: null }] })
-    expect(screen.queryByTestId('preco-venda')).toBe(null)
+    expect(screen.getByLabelText(/vender a/i).value).toBe('')
+  })
+
+  it('digitar o preço mostra a margem e o lucro daquele preço', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '1,95')
+
+    expect(screen.getByLabelText(/margem/i).value).toBe('200')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('65,00')
+  })
+
+  it('digitar a margem mostra o preço e o lucro', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/margem/i))
+    await userEvent.type(screen.getByLabelText(/margem/i), '200')
+
+    expect(screen.getByLabelText(/vender a/i).value).toBe('1,95')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('65,00')
+  })
+
+  it('digitar o lucro que ela quer mostra por quanto vender', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/lucro/i))
+    await userEvent.type(screen.getByLabelText(/lucro/i), '65,00')
+
+    expect(screen.getByLabelText(/vender a/i).value).toBe('1,95')
+    expect(screen.getByLabelText(/margem/i).value).toBe('200')
+  })
+
+  // O teste que mais importa: é o que prova que a tela não pula sob o dedo dela. Se o app
+  // reescrevesse o campo digitado com o valor derivado-e-arredondado, "1,9" viraria outra
+  // coisa no meio da digitação e o campo viraria uma luta.
+  it('o campo que ela está digitando nunca é reescrito pelo app', async () => {
+    montar()
+    const preco = screen.getByLabelText(/vender a/i)
+    await userEvent.clear(preco)
+    await userEvent.type(preco, '1,9')
+
+    expect(preco.value).toBe('1,9')
+  })
+
+  it('trocar de campo passa a mandar, começando do valor que estava na tela', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '1,95')
+    await userEvent.clear(screen.getByLabelText(/margem/i))
+    await userEvent.type(screen.getByLabelText(/margem/i), '300')
+
+    expect(screen.getByLabelText(/vender a/i).value).toBe('2,60')
+  })
+
+  it('margem de -100% ou menos avisa em vez de mostrar preço negativo', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/margem/i))
+    await userEvent.type(screen.getByLabelText(/margem/i), '-150')
+
+    expect(screen.getByLabelText(/vender a/i).value).toBe('')
+    expect(screen.getByText(/deixaria o preço em zero ou negativo/i)).toBeTruthy()
+  })
+
+  it('preço negativo digitado avisa em vez de mostrar margem e lucro', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '-1,00')
+
+    expect(screen.getByLabelText(/margem/i).value).toBe('')
+    expect(screen.getByText(/zero ou negativo/i)).toBeTruthy()
+  })
+
+  // Custo unitário ZERO (não "sem custo"): todos os ingredientes sem preço. Preço e lucro
+  // funcionam; margem é divisão por zero e fica em branco em vez de virar Infinity.
+  it('doce com todo ingrediente sem preço mostra preço e lucro, mas margem em branco', async () => {
+    montar({ ingredientesPorId: {} })
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '1,95')
+
+    expect(screen.getByLabelText(/margem/i).value).toBe('')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('97,50')
+  })
+
+  // Rendimento zero é o ÚNICO caminho para custo unitário null: sem rendimento não há por
+  // quantos dividir, e sem custo por unidade não há o que precificar.
+  it('rendimento zerado esconde o bloco de venda inteiro', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/rendeu quantos/i))
+    await userEvent.type(screen.getByLabelText(/rendeu quantos/i), '0')
+
+    expect(screen.queryByLabelText(/vender a/i)).toBe(null)
   })
 
   it('detalha os ingredientes no formato do parêntese', async () => {

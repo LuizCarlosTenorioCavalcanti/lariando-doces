@@ -56,7 +56,7 @@ describe('primeiro uso', () => {
       expect(screen.getByTestId('custo-total').textContent).toBe('R$ 15,60')
     })
     expect(screen.getByTestId('custo-cada').textContent).toBe('R$ 0,31')
-    expect(screen.getByTestId('preco-venda').textContent).toBe('R$ 0,93')
+    expect(screen.getByLabelText(/vender a/i).value).toBe('0,93')
 
     // 6. Hoje rendeu diferente: o total não muda, o preço por unidade muda.
     await userEvent.type(screen.getByLabelText(/rendeu quantos/i), '60')

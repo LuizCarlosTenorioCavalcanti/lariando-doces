@@ -3,9 +3,10 @@ import { CampoNumero } from '../componentes/CampoNumero'
 import { CampoMoeda } from '../componentes/CampoMoeda'
 import {
   custoDaProducao, custoDoItem, precoSugerido, lucroDaProducao, rendimentoSuspeito,
+  margemDoPreco, precoDoLucro,
 } from '../motor/custo'
 import { salvarProducao } from '../dados/repositorio'
-import { paraNumero, paraCentavos } from '../lib/numeroBR'
+import { paraNumero, paraCentavos, centavosParaCampo } from '../lib/numeroBR'
 import { formatBRL, formatarQuantidade } from '../lib/formato'
 import './calculadora.css'
 
@@ -58,11 +59,58 @@ export function Calculadora({
     })
   }, [receita, ingredientesPorId, receitasFeitas, rendimentoEfetivo, embalagens])
 
-  const venda = useMemo(() => {
-    if (!conta || receita?.margemPct === null || receita?.margemPct === undefined) return null
-    const preco = precoSugerido(conta.custoUnitarioCent, receita.margemPct)
-    return { preco, lucro: lucroDaProducao(conta.custoUnitarioCent, preco, rendimentoEfetivo) }
-  }, [conta, receita, rendimentoEfetivo])
+  // Qual campo ela digitou por último, e o texto CRU dela. O app recalcula os outros dois e
+  // nunca reescreve este — é o que impede o campo de pular sob o dedo enquanto ela digita.
+  const [editado, setEditado] = useState({ fonte: null, texto: '' })
+
+  const custoUnitarioCent = conta?.custoUnitarioCent ?? null
+
+  const precoCent = useMemo(() => {
+    if (editado.fonte === 'preco') {
+      const p = paraCentavos(editado.texto)
+      return p === null || p < 0 ? null : p
+    }
+    if (editado.fonte === 'margem') {
+      const m = paraNumero(editado.texto)
+      // Em -100% o preço zera; abaixo disso ele fica negativo, como se o doce pagasse para
+      // sair. É "-" a mais no campo, não uma decisão de negócio.
+      if (m === null || m <= -100) return null
+      return precoSugerido(custoUnitarioCent, m)
+    }
+    if (editado.fonte === 'lucro') {
+      const p = precoDoLucro(custoUnitarioCent, paraCentavos(editado.texto), rendimentoEfetivo)
+      return p === null || p < 0 ? null : p
+    }
+    // Antes de ela digitar qualquer coisa, o ponto de partida é a margem cadastrada no
+    // doce (v1). Sem margem cadastrada o bloco aparece vazio, esperando ela decidir.
+    if (receita?.margemPct === null || receita?.margemPct === undefined) return null
+    return precoSugerido(custoUnitarioCent, receita.margemPct)
+  }, [editado, custoUnitarioCent, rendimentoEfetivo, receita])
+
+  const margemCalculada = margemDoPreco(custoUnitarioCent, precoCent)
+  const lucroCent = lucroDaProducao(custoUnitarioCent, precoCent, rendimentoEfetivo)
+
+  // O campo que ela digitou mostra o texto dela; os outros dois mostram o derivado, já
+  // arredondado. Quem arredonda é sempre o derivado, nunca o digitado.
+  function textoDoCampo(campo) {
+    if (editado.fonte === campo) return editado.texto
+    if (campo === 'preco') return centavosParaCampo(precoCent)
+    if (campo === 'margem') {
+      return margemCalculada === null ? '' : String(Math.round(margemCalculada))
+    }
+    return centavosParaCampo(lucroCent)
+  }
+
+  const avisoVenda = precoCent === null && editado.fonte !== null && editado.texto.trim() !== ''
+    ? (editado.fonte === 'margem'
+      ? 'Margem de -100% ou menos deixaria o preço em zero ou negativo.'
+      : 'Esse número deixaria o preço em zero ou negativo — confira o sinal.')
+    : null
+
+  const aoMudarVenda = useCallback((fonte, texto) => {
+    setEditado({ fonte, texto })
+    setSalvo(false)
+  }, [])
 
   const producoesDoDoce = producoes.filter((p) => p.receitaId === receita?.id)
 
@@ -210,20 +258,35 @@ export function Calculadora({
           <strong data-testid="custo-cada">{formatBRL(conta.custoUnitarioCent)}</strong>
         </div>
 
-        {venda ? (
+        {custoUnitarioCent !== null ? (
           <>
             <hr />
-            <div className="resultado-linha">
-              <span>Vender a</span>
-              <strong data-testid="preco-venda">{formatBRL(venda.preco)}</strong>
-            </div>
-            <div className="resultado-linha">
-              <span>Lucro</span>
-              <strong data-testid="lucro">{formatBRL(venda.lucro)}</strong>
-            </div>
+            <CampoMoeda
+              id="calc-preco"
+              rotulo="Vender a"
+              valor={textoDoCampo('preco')}
+              aoMudar={(v) => aoMudarVenda('preco', v)}
+            />
+            <CampoNumero
+              id="calc-margem"
+              rotulo="Margem"
+              valor={textoDoCampo('margem')}
+              aoMudar={(v) => aoMudarVenda('margem', v)}
+              sufixo="%"
+            />
+            <CampoMoeda
+              id="calc-lucro"
+              rotulo="Lucro da fornada"
+              valor={textoDoCampo('lucro')}
+              aoMudar={(v) => aoMudarVenda('lucro', v)}
+            />
           </>
         ) : null}
       </div>
+
+      {avisoVenda ? (
+        <p className="aviso aviso-atencao" role="status">{avisoVenda}</p>
+      ) : null}
 
       {conta.parcial ? (
         <p className="aviso aviso-atencao" role="status">
