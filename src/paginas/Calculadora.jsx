@@ -24,10 +24,9 @@ export function Calculadora({
   const [salvando, setSalvando] = useState(false)
 
   // Uma linha por embalagem: 65 forminhas a R$ 0,05, 1 caixa a R$ 2,50. Texto, não número,
-  // porque enquanto ela digita "2," o conteúdo não é número válido.
-  const [linhasEmbalagem, setLinhasEmbalagem] = useState([
-    { chave: 'emb_0', quantidade: '', preco: '' },
-  ])
+  // porque enquanto ela digita "2," o conteúdo não é número válido. Carrega de qual doce ela
+  // é — trocar de doce descarta o que ela digitou (é simulação, não faz sentido migrar).
+  const [embalagemEditada, setEmbalagemEditada] = useState({ receitaId: null, linhas: null })
 
   // Derivar em vez de sincronizar por efeito: as receitas chegam do banco depois da
   // primeira renderização, e um efeito que "conserta" o id selecionado depois erra sempre
@@ -39,6 +38,38 @@ export function Calculadora({
   const rendimentoEfetivo = rendimento.trim() === ''
     ? receita?.rendimentoBase ?? null
     : paraNumero(rendimento)
+
+  const producoesDoDoce = producoes.filter((p) => p.receitaId === receita?.id)
+
+  // Duas leituras diferentes de "da última vez", de propósito: ela sempre vê o preço que
+  // cobra (mesmo que a última fornada não tenha tido preço) e sempre vê o embrulho que usou.
+  const ordenadas = useMemo(
+    () => [...producoesDoDoce].sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
+    [producoesDoDoce],
+  )
+  const ultimaProducao = ordenadas[0] ?? null
+  const ultimaVenda = ordenadas.find(
+    (p) => p.precoVendaCent !== null && p.precoVendaCent !== undefined,
+  ) ?? null
+
+  const embalagemDePartida = useMemo(() => {
+    const salvas = ultimaProducao?.embalagens ?? []
+    if (salvas.length === 0) return [{ chave: 'emb_0', quantidade: '', preco: '' }]
+    // Vem COMO ESTAVA, sem escalar com o rendimento: se da última vez foram 65 forminhas e
+    // hoje rendeu 50, o app mostra 65 e espera ela corrigir. Escalar sozinho seria pôr um
+    // número que ela não conferiu no campo cujo propósito é ser conferido.
+    return salvas.map((l, i) => ({
+      chave: `emb_${i}`,
+      quantidade: String(l.quantidade),
+      preco: centavosParaCampo(l.precoUnitarioCent),
+    }))
+  }, [ultimaProducao])
+
+  // Digitar é simulação e morre ao trocar de doce: a embalagem só vira "a última produção"
+  // quando ela toca em Salvar produção.
+  const linhasEmbalagem = embalagemEditada.receitaId === receita?.id
+    ? embalagemEditada.linhas
+    : embalagemDePartida
 
   const embalagens = useMemo(
     () => linhasEmbalagem.map((l) => ({
@@ -59,33 +90,48 @@ export function Calculadora({
     })
   }, [receita, ingredientesPorId, receitasFeitas, rendimentoEfetivo, embalagens])
 
-  // Qual campo ela digitou por último, e o texto CRU dela. O app recalcula os outros dois e
-  // nunca reescreve este — é o que impede o campo de pular sob o dedo enquanto ela digita.
-  const [editado, setEditado] = useState({ fonte: null, texto: '' })
+  // Qual campo ela digitou por último, e o texto CRU dela — carimbado com o doce de quando
+  // ela digitou. O app recalcula os outros dois e nunca reescreve este, o que impede o campo
+  // de pular sob o dedo enquanto ela digita.
+  const [editado, setEditado] = useState({ receitaId: null, fonte: null, texto: '' })
 
   const custoUnitarioCent = conta?.custoUnitarioCent ?? null
 
+  // A ordem é a migração inteira: última venda; senão a margem gravada na v1 (e aí a tela
+  // mostra exatamente o preço que mostrava antes); senão vazio. Nenhum dado é reescrito.
+  const vendaDePartida = useMemo(() => {
+    if (ultimaVenda) {
+      return { fonte: 'preco', texto: centavosParaCampo(ultimaVenda.precoVendaCent) }
+    }
+    const daMargemAntiga = precoSugerido(custoUnitarioCent, receita?.margemPct)
+    if (daMargemAntiga !== null) {
+      return { fonte: 'preco', texto: centavosParaCampo(daMargemAntiga) }
+    }
+    return { fonte: null, texto: '' }
+  }, [ultimaVenda, custoUnitarioCent, receita])
+
+  // Digitar é simulação e morre ao trocar de doce: o preço só vira "a última venda" quando
+  // ela toca em Salvar produção, que é quando ela afirma que aquilo aconteceu.
+  const venda = editado.receitaId === receita?.id ? editado : vendaDePartida
+
   const precoCent = useMemo(() => {
-    if (editado.fonte === 'preco') {
-      const p = paraCentavos(editado.texto)
+    if (venda.fonte === 'preco') {
+      const p = paraCentavos(venda.texto)
       return p === null || p < 0 ? null : p
     }
-    if (editado.fonte === 'margem') {
-      const m = paraNumero(editado.texto)
+    if (venda.fonte === 'margem') {
+      const m = paraNumero(venda.texto)
       // Em -100% o preço zera; abaixo disso ele fica negativo, como se o doce pagasse para
       // sair. É "-" a mais no campo, não uma decisão de negócio.
       if (m === null || m <= -100) return null
       return precoSugerido(custoUnitarioCent, m)
     }
-    if (editado.fonte === 'lucro') {
-      const p = precoDoLucro(custoUnitarioCent, paraCentavos(editado.texto), rendimentoEfetivo)
+    if (venda.fonte === 'lucro') {
+      const p = precoDoLucro(custoUnitarioCent, paraCentavos(venda.texto), rendimentoEfetivo)
       return p === null || p < 0 ? null : p
     }
-    // Antes de ela digitar qualquer coisa, o ponto de partida é a margem cadastrada no
-    // doce (v1). Sem margem cadastrada o bloco aparece vazio, esperando ela decidir.
-    if (receita?.margemPct === null || receita?.margemPct === undefined) return null
-    return precoSugerido(custoUnitarioCent, receita.margemPct)
-  }, [editado, custoUnitarioCent, rendimentoEfetivo, receita])
+    return null
+  }, [venda, custoUnitarioCent, rendimentoEfetivo])
 
   const margemCalculada = margemDoPreco(custoUnitarioCent, precoCent)
   const lucroCent = lucroDaProducao(custoUnitarioCent, precoCent, rendimentoEfetivo)
@@ -93,7 +139,7 @@ export function Calculadora({
   // O campo que ela digitou mostra o texto dela; os outros dois mostram o derivado, já
   // arredondado. Quem arredonda é sempre o derivado, nunca o digitado.
   function textoDoCampo(campo) {
-    if (editado.fonte === campo) return editado.texto
+    if (venda.fonte === campo) return venda.texto
     if (campo === 'preco') return centavosParaCampo(precoCent)
     if (campo === 'margem') {
       return margemCalculada === null ? '' : String(Math.round(margemCalculada))
@@ -104,22 +150,20 @@ export function Calculadora({
   // "1," e "-" são textos INCOMPLETOS, não números errados: ela está no meio da digitação.
   // Alarmar aqui é a tela pulando sob o dedo dela, que é o defeito que estes três campos
   // existem para não ter. Só avisa quando dá para LER o número e ele é impossível.
-  const digitouNumeroLegivel = editado.fonte === 'margem'
-    ? paraNumero(editado.texto) !== null
-    : paraCentavos(editado.texto) !== null
+  const digitouNumeroLegivel = venda.fonte === 'margem'
+    ? paraNumero(venda.texto) !== null
+    : paraCentavos(venda.texto) !== null
 
-  const avisoVenda = precoCent === null && editado.fonte !== null && digitouNumeroLegivel
-    ? (editado.fonte === 'margem'
+  const avisoVenda = precoCent === null && venda.fonte !== null && digitouNumeroLegivel
+    ? (venda.fonte === 'margem'
       ? 'Margem de -100% ou menos deixaria o preço em zero ou negativo.'
       : 'Esse número deixaria o preço em zero ou negativo — confira o sinal.')
     : null
 
   const aoMudarVenda = useCallback((fonte, texto) => {
-    setEditado({ fonte, texto })
+    setEditado({ receitaId: receita?.id ?? null, fonte, texto })
     setSalvo(false)
-  }, [])
-
-  const producoesDoDoce = producoes.filter((p) => p.receitaId === receita?.id)
+  }, [receita])
 
   const suspeito = receita && rendimentoSuspeito({
     rendimento: rendimentoEfetivo,
@@ -139,6 +183,10 @@ export function Calculadora({
     setReceitaId(e.target.value)
     setRendimento('')
     setSalvo(false)
+    // Trocar de doce descarta a simulação — inclusive se ela voltar para o doce de antes,
+    // porque passar por outro já provou que aquele número não era afirmação de nada.
+    setEditado({ receitaId: null, fonte: null, texto: '' })
+    setEmbalagemEditada({ receitaId: null, linhas: null })
   }, [])
 
   const aoMudarRendimento = useCallback((v) => {
@@ -155,18 +203,19 @@ export function Calculadora({
   const alternarDetalhe = useCallback(() => setMostrarDetalhe((v) => !v), [])
 
   const aoMudarLinha = useCallback((chave, campo, valor) => {
-    setLinhasEmbalagem((linhas) => linhas.map(
-      (l) => (l.chave === chave ? { ...l, [campo]: valor } : l),
-    ))
+    setEmbalagemEditada({
+      receitaId: receita?.id ?? null,
+      linhas: linhasEmbalagem.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)),
+    })
     setSalvo(false)
-  }, [])
+  }, [receita, linhasEmbalagem])
 
   const acrescentarLinha = useCallback(() => {
-    setLinhasEmbalagem((linhas) => [
-      ...linhas,
-      { chave: `emb_${linhas.length}`, quantidade: '', preco: '' },
-    ])
-  }, [])
+    setEmbalagemEditada({
+      receitaId: receita?.id ?? null,
+      linhas: [...linhasEmbalagem, { chave: `emb_${linhasEmbalagem.length}`, quantidade: '', preco: '' }],
+    })
+  }, [receita, linhasEmbalagem])
 
   const gravar = useCallback(async () => {
     if (salvando) return

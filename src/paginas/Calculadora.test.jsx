@@ -32,6 +32,8 @@ const BRIGADEIRO = {
   ],
 }
 
+const OUTRO_DOCE = { id: 'rec_2', nome: 'Beijinho', rendimentoBase: 40, margemPct: null, itens: [] }
+
 function montar(props = {}) {
   return render(
     <Calculadora
@@ -308,5 +310,56 @@ describe('Calculadora', () => {
     montar()
     await userEvent.click(screen.getByRole('button', { name: /ver ingredientes/i }))
     expect(screen.queryByText(/embalagem ·/i)).toBe(null)
+  })
+
+  describe('abre já preenchida com a última vez', () => {
+    const PRODUCAO_ANTERIOR = {
+      id: 'prod_1', receitaId: 'rec_1', nomeReceita: 'Brigadeiro', receitasFeitas: 1,
+      rendimento: 50, custoTotalCent: 3500, custoUnitarioCent: 70, parcial: false,
+      precoVendaCent: 300, embalagens: [{ quantidade: 1, precoUnitarioCent: 250 }],
+      data: '2026-08-20', criadoEm: '2026-08-20T10:00:00.000Z',
+    }
+
+    it('doce já vendido abre com o preço da última venda', () => {
+      montar({ producoes: [PRODUCAO_ANTERIOR] })
+      expect(screen.getByLabelText(/vender a/i).value).toBe('3,00')
+    })
+
+    it('e com a embalagem da última produção, para ela conferir', () => {
+      montar({ producoes: [PRODUCAO_ANTERIOR] })
+      expect(screen.getByLabelText(/quantas embalagens/i).value).toBe('1')
+      expect(screen.getByLabelText(/preço de cada embalagem/i).value).toBe('2,50')
+    })
+
+    it('entre duas produções, vale a mais recente', () => {
+      const maisVelha = { ...PRODUCAO_ANTERIOR, id: 'prod_0', precoVendaCent: 100, criadoEm: '2026-08-01T10:00:00.000Z' }
+      montar({ producoes: [maisVelha, PRODUCAO_ANTERIOR] })
+      expect(screen.getByLabelText(/vender a/i).value).toBe('3,00')
+    })
+
+    // A migração inteira, e ela é invisível: o brigadeiro do fixture tem margemPct 200 da v1,
+    // e a tela mostra exatamente o preço que mostrava antes desta mudança.
+    it('doce nunca vendido cai na margem da v1 e mostra o mesmo preço de sempre', () => {
+      montar()
+      expect(screen.getByLabelText(/vender a/i).value).toBe('1,95')
+    })
+
+    it('doce sem venda e sem margem da v1 abre com os três campos vazios', () => {
+      montar({ receitas: [{ ...BRIGADEIRO, margemPct: null }] })
+      expect(screen.getByLabelText(/vender a/i).value).toBe('')
+      expect(screen.getByLabelText(/margem/i).value).toBe('')
+    })
+
+    // Digitar é simular. Só "Salvar produção" afirma que aconteceu.
+    it('simular um preço não muda o que vem preenchido no próximo doce', async () => {
+      montar({ producoes: [PRODUCAO_ANTERIOR], receitas: [BRIGADEIRO, OUTRO_DOCE] })
+      await userEvent.clear(screen.getByLabelText(/vender a/i))
+      await userEvent.type(screen.getByLabelText(/vender a/i), '9,99')
+
+      await userEvent.selectOptions(screen.getByLabelText(/o que você fez/i), 'rec_2')
+      await userEvent.selectOptions(screen.getByLabelText(/o que você fez/i), 'rec_1')
+
+      expect(screen.getByLabelText(/vender a/i).value).toBe('3,00')
+    })
   })
 })
