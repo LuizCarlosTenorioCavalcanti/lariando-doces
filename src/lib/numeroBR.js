@@ -28,3 +28,13 @@ export function paraCentavos(texto) {
   if (n === null) return null
   return Math.round(n * 100)
 }
+
+/** Centavos → o texto que vai DENTRO de um campo: `195` → `"1,95"`.
+ *
+ *  É a volta de `paraCentavos`, e existe porque `formatBRL` não serve: aquele põe `R$` e
+ *  separador de milhar, e os dois atrapalham quem vai editar o número. Sem valor devolve
+ *  vazio, não travessão — travessão é para leitura, campo vazio é para digitação. */
+export function centavosParaCampo(centavos) {
+  if (centavos === null || centavos === undefined || !Number.isFinite(centavos)) return ''
+  return (centavos / 100).toFixed(2).replace('.', ',')
+}
