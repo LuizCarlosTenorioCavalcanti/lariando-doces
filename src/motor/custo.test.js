@@ -186,6 +186,47 @@ describe('custoDaProducao', () => {
     expect(Number.isInteger(r.custoTotalCent)).toBe(true)
     expect(Number.isInteger(r.custoUnitarioCent)).toBe(true)
   })
+
+  it('a embalagem entra no total e no custo de cada um', () => {
+    const r = custoDaProducao({
+      receita: BRIGADEIRO, ingredientesPorId: PORID, receitasFeitas: 1, rendimento: 50,
+      embalagens: [{ quantidade: 1, precoUnitarioCent: 250 }],
+    })
+    expect(r.custoTotalCent).toBe(3500)
+    expect(r.custoUnitarioCent).toBe(70)
+  })
+
+  // O ponto mais importante da Fase 1. Ingrediente escala com quantas receitas saíram do
+  // armário; embalagem não escala com nada, porque ela digitou a quantidade que de fato
+  // usou. Multiplicar cobraria 2 caixas de quem usou 1.
+  it('a embalagem NÃO é multiplicada por quantas receitas ela fez', () => {
+    const r = custoDaProducao({
+      receita: BRIGADEIRO, ingredientesPorId: PORID, receitasFeitas: 2, rendimento: 100,
+      embalagens: [{ quantidade: 1, precoUnitarioCent: 250 }],
+    })
+    expect(r.custoTotalCent).toBe(6750)
+  })
+
+  it('sem embalagem o total é o de sempre', () => {
+    const semCampo = custoDaProducao({
+      receita: BRIGADEIRO, ingredientesPorId: PORID, receitasFeitas: 1, rendimento: 50,
+    })
+    const comListaVazia = custoDaProducao({
+      receita: BRIGADEIRO, ingredientesPorId: PORID, receitasFeitas: 1, rendimento: 50,
+      embalagens: [],
+    })
+    expect(semCampo.custoTotalCent).toBe(3250)
+    expect(comListaVazia.custoTotalCent).toBe(3250)
+  })
+
+  it('embalagem pela metade acende o parcial, como ingrediente sem preço faz', () => {
+    const r = custoDaProducao({
+      receita: BRIGADEIRO, ingredientesPorId: PORID, receitasFeitas: 1, rendimento: 50,
+      embalagens: [{ quantidade: 1, precoUnitarioCent: null }],
+    })
+    expect(r.parcial).toBe(true)
+    expect(r.custoTotalCent).toBe(3250)
+  })
 })
 
 describe('precoSugerido', () => {

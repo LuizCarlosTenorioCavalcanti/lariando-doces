@@ -52,12 +52,16 @@ export function custoDaReceita(receita, ingredientesPorId) {
  *  rendimento manda em por quantas unidades esse total se divide. Separar os dois é o que
  *  faz "a mesma panela rendeu 65 hoje" ficar certo — se o app assumisse proporcional,
  *  cobraria 30% a mais de ingrediente que ela não usou. */
-export function custoDaProducao({ receita, ingredientesPorId, receitasFeitas, rendimento }) {
+export function custoDaProducao({
+  receita, ingredientesPorId, receitasFeitas, rendimento, embalagens,
+}) {
   const { totalCent, semPreco } = custoDaReceita(receita, ingredientesPorId)
+  const embalagem = custoDasEmbalagens(embalagens)
 
   const nReceitas = Number(receitasFeitas)
   const temReceitas = Number.isFinite(nReceitas) && nReceitas > 0
-  const totalProducao = temReceitas ? totalCent * nReceitas : null
+  // A embalagem entra SOMANDO, fora do `× nReceitas`: ela digitou quantas usou de verdade.
+  const totalProducao = temReceitas ? totalCent * nReceitas + embalagem.totalCent : null
 
   const rend = Number(rendimento)
   const temRendimento = Number.isFinite(rend) && rend > 0
@@ -69,7 +73,7 @@ export function custoDaProducao({ receita, ingredientesPorId, receitasFeitas, re
     // conta.
     custoUnitarioCent:
       totalProducao !== null && temRendimento ? Math.round(totalProducao / rend) : null,
-    parcial: semPreco.length > 0,
+    parcial: semPreco.length > 0 || embalagem.incompleta,
     semPreco,
   }
 }
