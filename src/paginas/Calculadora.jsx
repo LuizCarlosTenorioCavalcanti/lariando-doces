@@ -101,7 +101,14 @@ export function Calculadora({
     return centavosParaCampo(lucroCent)
   }
 
-  const avisoVenda = precoCent === null && editado.fonte !== null && editado.texto.trim() !== ''
+  // "1," e "-" são textos INCOMPLETOS, não números errados: ela está no meio da digitação.
+  // Alarmar aqui é a tela pulando sob o dedo dela, que é o defeito que estes três campos
+  // existem para não ter. Só avisa quando dá para LER o número e ele é impossível.
+  const digitouNumeroLegivel = editado.fonte === 'margem'
+    ? paraNumero(editado.texto) !== null
+    : paraCentavos(editado.texto) !== null
+
+  const avisoVenda = precoCent === null && editado.fonte !== null && digitouNumeroLegivel
     ? (editado.fonte === 'margem'
       ? 'Margem de -100% ou menos deixaria o preço em zero ou negativo.'
       : 'Esse número deixaria o preço em zero ou negativo — confira o sinal.')
@@ -280,13 +287,13 @@ export function Calculadora({
               valor={textoDoCampo('lucro')}
               aoMudar={(v) => aoMudarVenda('lucro', v)}
             />
+
+            {avisoVenda ? (
+              <p className="aviso aviso-atencao" role="status">{avisoVenda}</p>
+            ) : null}
           </>
         ) : null}
       </div>
-
-      {avisoVenda ? (
-        <p className="aviso aviso-atencao" role="status">{avisoVenda}</p>
-      ) : null}
 
       {conta.parcial ? (
         <p className="aviso aviso-atencao" role="status">

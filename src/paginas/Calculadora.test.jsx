@@ -180,6 +180,35 @@ describe('Calculadora', () => {
     expect(screen.queryByLabelText(/vender a/i)).toBe(null)
   })
 
+  // Vírgula recém-digitada não é erro, é meio de caminho.
+  it('texto incompleto não acende alarme — ela ainda está digitando', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/vender a/i))
+    await userEvent.type(screen.getByLabelText(/vender a/i), '1,')
+
+    expect(screen.queryByText(/zero ou negativo/i)).toBe(null)
+  })
+
+  it('o sinal de menos sozinho não acusa margem que ela não digitou', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/margem/i))
+    await userEvent.type(screen.getByLabelText(/margem/i), '-')
+
+    expect(screen.queryByText(/-100%|zero ou negativo/i)).toBe(null)
+  })
+
+  // Sem os campos na tela, o aviso não tem sobre o que falar.
+  it('o aviso some junto com o bloco de venda quando o rendimento zera', async () => {
+    montar()
+    await userEvent.clear(screen.getByLabelText(/lucro/i))
+    await userEvent.type(screen.getByLabelText(/lucro/i), '65,00')
+    await userEvent.clear(screen.getByLabelText(/rendeu quantos/i))
+    await userEvent.type(screen.getByLabelText(/rendeu quantos/i), '0')
+
+    expect(screen.queryByLabelText(/vender a/i)).toBe(null)
+    expect(screen.queryByText(/zero ou negativo/i)).toBe(null)
+  })
+
   it('detalha os ingredientes no formato do parêntese', async () => {
     montar()
     await userEvent.click(screen.getByRole('button', { name: /ver ingredientes/i }))
