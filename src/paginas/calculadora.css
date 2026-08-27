@@ -13,7 +13,13 @@
 /* Quantos e quanto cada um lado a lado: são uma frase só, e separá-los em duas linhas
    faria parecer dois assuntos. */
 .linha-embalagem { display: flex; gap: 0.5rem; align-items: flex-start; }
-.linha-embalagem > .campo { flex: 1; }
+/* `min-width: 0` é o que permite o item encolher abaixo do próprio conteúdo — sem ele o
+   flex item nunca fica menor que seu min-content, e a linha vaza pra fora do celular
+   (rolagem horizontal do body) assim que soma dois campos e mais alguma coisa do lado. */
+.linha-embalagem > .campo { flex: 1; min-width: 0; }
+/* O "×" fica fora dos dois campos (ele tira a linha inteira, não um dos dois) — alinhado
+   pela altura da caixa de digitação, não do rótulo acima dela. */
+.linha-embalagem > .linha-tirar { margin-top: 26px; }
 
 .resultado {
   background: var(--marca);
@@ -35,6 +41,17 @@
 .resultado-linha span { opacity: .82; }
 .resultado-linha strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
 .resultado hr { border: 0; border-top: 1px solid rgba(255, 255, 255, .22); margin: 12px 0; }
+
+/* Os três campos de venda moram dentro do cartão da marca (é ali que ela decide "quanto eu
+   cobro"), mas o cartão é escuro e `campo-caixa`/`campo-rotulo` são pensados para o fundo
+   claro do resto da tela. Sem isto o texto sai branco sobre branco: reescopa cor e fundo
+   só aqui dentro, sem mexer no campo em nenhum outro lugar da tela. */
+.resultado .campo-rotulo { color: rgba(255, 255, 255, .85); }
+.resultado .campo-caixa { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .3); }
+.resultado .campo-caixa:focus-within { border-color: #fff; }
+.resultado .campo-caixa input { color: #fff; }
+.resultado .campo-fixo { color: rgba(255, 255, 255, .75); }
+.resultado .campo-dica { color: rgba(255, 255, 255, .75); }
 
 .calc-detalhe {
   border: 0;

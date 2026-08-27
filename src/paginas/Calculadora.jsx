@@ -10,6 +10,22 @@ import { paraNumero, paraCentavos, centavosParaCampo } from '../lib/numeroBR'
 import { formatBRL, formatarQuantidade } from '../lib/formato'
 import './calculadora.css'
 
+/** Texto do chip fechado: precisa dar para conferir de relance que tem embalagem da última
+ *  vez, sem abrir nada — é a única razão de o preenchimento automático existir. */
+function resumoEmbalagem(linhas) {
+  const preenchidas = linhas.filter((l) => l.quantidade.trim() !== '' || l.preco.trim() !== '')
+  if (preenchidas.length === 0) return '+ embalagem ›'
+
+  const partes = preenchidas.map((l) => {
+    const qtd = l.quantidade.trim() === '' ? '?' : l.quantidade
+    const precoCent = l.preco.trim() === '' ? null : paraCentavos(l.preco)
+    const precoTexto = precoCent === null ? '?' : formatBRL(precoCent)
+    const plural = qtd === '1' ? '' : 's'
+    return `${qtd} embalagem${plural} · ${precoTexto}`
+  })
+  return `${partes.join(' + ')} ›`
+}
+
 export function Calculadora({
   receitas, ingredientesPorId, producoes, aoAbrirDoces, aoAbrirIngredientes, aoAbrirHistorico,
   aoGravado,
@@ -18,6 +34,7 @@ export function Calculadora({
   const [receitasFeitas, setReceitasFeitas] = useState('1')
   const [rendimento, setRendimento] = useState('')
   const [mostrarReceitas, setMostrarReceitas] = useState(false)
+  const [mostrarEmbalagem, setMostrarEmbalagem] = useState(false)
   const [mostrarDetalhe, setMostrarDetalhe] = useState(false)
   const [erro, setErro] = useState(null)
   const [salvo, setSalvo] = useState(false)
@@ -44,7 +61,9 @@ export function Calculadora({
   // Duas leituras diferentes de "da última vez", de propósito: ela sempre vê o preço que
   // cobra (mesmo que a última fornada não tenha tido preço) e sempre vê o embrulho que usou.
   const ordenadas = useMemo(
-    () => [...producoesDoDoce].sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
+    () => [...producoesDoDoce].sort(
+      (a, b) => String(b.criadoEm ?? '').localeCompare(String(a.criadoEm ?? '')),
+    ),
     [producoesDoDoce],
   )
   const ultimaProducao = ordenadas[0] ?? null
@@ -54,13 +73,14 @@ export function Calculadora({
 
   const embalagemDePartida = useMemo(() => {
     const salvas = ultimaProducao?.embalagens ?? []
-    if (salvas.length === 0) return [{ chave: 'emb_0', quantidade: '', preco: '' }]
+    if (salvas.length === 0) return [{ chave: crypto.randomUUID(), quantidade: '', preco: '' }]
     // Vem COMO ESTAVA, sem escalar com o rendimento: se da última vez foram 65 forminhas e
     // hoje rendeu 50, o app mostra 65 e espera ela corrigir. Escalar sozinho seria pôr um
     // número que ela não conferiu no campo cujo propósito é ser conferido.
-    return salvas.map((l, i) => ({
-      chave: `emb_${i}`,
-      quantidade: String(l.quantidade),
+    return salvas.map((l) => ({
+      chave: crypto.randomUUID(),
+      // Vírgula, não ponto: "1,5 embalagens" reabre como "1.5" quebraria o falar em pt-BR.
+      quantidade: String(l.quantidade).replace('.', ','),
       preco: centavosParaCampo(l.precoUnitarioCent),
     }))
   }, [ultimaProducao])
@@ -179,6 +199,17 @@ export function Calculadora({
     }).custoUnitarioCent
   }, [receita, ingredientesPorId])
 
+  // O aviso é sobre o RENDIMENTO ter fugido, não sobre embalagem — que escala com as
+  // unidades que ela embalou, não com o rendimento, e por isso não pertence a esta
+  // comparação. Os dois lados precisam ser a mesma conta (sem embalagem), ou "quase igual"
+  // vira "bem longe" na tela e ela aprende a ignorar o aviso.
+  const custoUnitarioSemEmbalagemCent = useMemo(() => {
+    if (!receita) return null
+    return custoDaProducao({
+      receita, ingredientesPorId, receitasFeitas: paraNumero(receitasFeitas), rendimento: rendimentoEfetivo,
+    }).custoUnitarioCent
+  }, [receita, ingredientesPorId, receitasFeitas, rendimentoEfetivo])
+
   const aoMudarDoce = useCallback((e) => {
     setReceitaId(e.target.value)
     setRendimento('')
@@ -213,8 +244,20 @@ export function Calculadora({
   const acrescentarLinha = useCallback(() => {
     setEmbalagemEditada({
       receitaId: receita?.id ?? null,
-      linhas: [...linhasEmbalagem, { chave: `emb_${linhasEmbalagem.length}`, quantidade: '', preco: '' }],
+      linhas: [...linhasEmbalagem, { chave: crypto.randomUUID(), quantidade: '', preco: '' }],
     })
+    setMostrarEmbalagem(true)
+  }, [receita, linhasEmbalagem])
+
+  // Tirar uma linha não pode reindexar as outras: a chave é o que o React usa para saber
+  // qual DOM pertence a qual linha, e uma chave derivada de posição (`emb_1`, `emb_2`)
+  // faria o campo que ela está digitando "pular" de linha ao remover uma linha do meio.
+  const tirarLinha = useCallback((chave) => {
+    setEmbalagemEditada({
+      receitaId: receita?.id ?? null,
+      linhas: linhasEmbalagem.filter((l) => l.chave !== chave),
+    })
+    setSalvo(false)
   }, [receita, linhasEmbalagem])
 
   const gravar = useCallback(async () => {
@@ -281,29 +324,52 @@ export function Calculadora({
         </button>
       )}
 
-      {linhasEmbalagem.map((linha, indice) => (
-        <div className="linha-embalagem" key={linha.chave}>
-          <CampoNumero
-            id={`calc-emb-qtd-${linha.chave}`}
-            rotulo="Quantas embalagens?"
-            valor={linha.quantidade}
-            aoMudar={(v) => aoMudarLinha(linha.chave, 'quantidade', v)}
-            dica={indice === 0
-              ? 'Saquinho, forminha, caixa. Deixe em branco se foi em pote retornável.'
-              : undefined}
-          />
-          <CampoMoeda
-            id={`calc-emb-preco-${linha.chave}`}
-            rotulo="Preço de cada embalagem"
-            valor={linha.preco}
-            aoMudar={(v) => aoMudarLinha(linha.chave, 'preco', v)}
-          />
-        </div>
-      ))}
+      {mostrarEmbalagem ? (
+        <>
+          {linhasEmbalagem.map((linha, indice) => (
+            <div className="linha-embalagem" key={linha.chave}>
+              <CampoNumero
+                id={`calc-emb-qtd-${linha.chave}`}
+                rotulo="Quantas embalagens?"
+                valor={linha.quantidade}
+                aoMudar={(v) => aoMudarLinha(linha.chave, 'quantidade', v)}
+                dica={indice === 0
+                  ? 'Saquinho, forminha, caixa. Deixe em branco se foi em pote retornável.'
+                  : undefined}
+              />
+              <CampoMoeda
+                id={`calc-emb-preco-${linha.chave}`}
+                rotulo="Preço de cada embalagem"
+                valor={linha.preco}
+                aoMudar={(v) => aoMudarLinha(linha.chave, 'preco', v)}
+              />
+              {linhasEmbalagem.length > 1 ? (
+                <button
+                  type="button"
+                  className="linha-tirar"
+                  aria-label={`Tirar embalagem ${indice + 1}`}
+                  onClick={() => tirarLinha(linha.chave)}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ))}
 
-      <button type="button" className="chip" onClick={acrescentarLinha}>
-        + embalagem
-      </button>
+          <button type="button" className="chip" onClick={acrescentarLinha}>
+            + embalagem
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="chip"
+          data-testid="embalagem-chip"
+          onClick={() => setMostrarEmbalagem(true)}
+        >
+          {resumoEmbalagem(linhasEmbalagem)}
+        </button>
+      )}
 
       <div className="resultado">
         <div className="resultado-linha">
@@ -349,13 +415,13 @@ export function Calculadora({
         <p className="aviso aviso-atencao" role="status">
           {conta.semPreco.length > 0
             ? `Parcial — falta o preço de ${conta.semPreco.join(', ')}.`
-            : 'Parcial — falta o preço da embalagem.'}
+            : 'Parcial — tem embalagem preenchida pela metade.'}
         </p>
       ) : null}
 
       {suspeito ? (
         <p className="aviso aviso-atencao" data-testid="aviso-rendimento" role="status">
-          {`${formatBRL(conta.custoUnitarioCent)} cada, bem longe do ${formatBRL(custoNormal)} de sempre — conferiu o rendimento?`}
+          {`${formatBRL(custoUnitarioSemEmbalagemCent)} cada, bem longe do ${formatBRL(custoNormal)} de sempre — conferiu o rendimento?`}
         </p>
       ) : null}
 

@@ -99,6 +99,15 @@ export function validarBackup(obj) {
     if (!Array.isArray(registro.itens)) {
       return { ok: false, motivo: 'O backup tem uma receita sem lista de ingredientes — o arquivo está corrompido.' }
     }
+    // Uma margem <= -100% deixaria o preço em zero ou negativo — o mesmo limite de
+    // `repositorio.js` — e, sem checagem aqui, o doce entra e não tem mais campo de margem
+    // no formulário para ela consertar depois.
+    if (registro.margemPct !== null && registro.margemPct !== undefined) {
+      const margem = Number(registro.margemPct)
+      if (registro.margemPct === '' || !Number.isFinite(margem) || margem <= -100) {
+        return { ok: false, motivo: 'O backup tem uma receita com margem inválida.' }
+      }
+    }
     for (const item of registro.itens) {
       if (!item || typeof item !== 'object' || typeof item.ingredienteId !== 'string' || !item.ingredienteId) {
         return { ok: false, motivo: 'O backup tem um item de receita sem ingrediente — o arquivo está corrompido.' }
@@ -117,7 +126,7 @@ export function validarBackup(obj) {
     // embalagem (pote retornável) é o caso comum, e não pode escapar desta validação.
     if (registro.precoVendaCent !== null && registro.precoVendaCent !== undefined) {
       const preco = Number(registro.precoVendaCent)
-      if (!Number.isFinite(preco) || preco < 0) {
+      if (registro.precoVendaCent === '' || !Number.isFinite(preco) || preco < 0) {
         return { ok: false, motivo: 'O backup tem uma produção com preço de venda inválido.' }
       }
     }

@@ -277,6 +277,43 @@ describe('validarBackup', () => {
     expect(r.ok).toBe(false)
     expect(r.motivo).toMatch(/embalagem/i)
   })
+
+  // `'' !== null` e `Number('')` é `0`: sem checar presença antes, um preço vazio passa
+  // como se fosse "vendeu de graça" — mesmo defeito que a validação de embalagem já evita.
+  it('recusa produção com preço de venda vazio (string vazia não é ausência)', () => {
+    const r = validarBackup({
+      versao: 1, ingredientes: [], receitas: [],
+      producoes: [{ id: 'prod_1', precoVendaCent: '' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/preço/i)
+  })
+
+  // Sem esta checagem, um doce importado com margem -150 entra e qualquer edição dele
+  // estoura "a margem não pode ser -100% ou menos" sem que o formulário tenha mais campo de
+  // margem para ela consertar.
+  it('recusa receita com margem -100% ou menos', () => {
+    const r = validarBackup({
+      versao: 1, receitas: [{ id: 'rec_1', nomeNormalizado: 'brigadeiro', itens: [], margemPct: -150 }],
+      ingredientes: [], producoes: [],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/margem/i)
+  })
+
+  it('aceita receita sem margem e com margem válida', () => {
+    const semMargem = validarBackup({
+      versao: 1, receitas: [{ id: 'rec_1', nomeNormalizado: 'brigadeiro', itens: [], margemPct: null }],
+      ingredientes: [], producoes: [],
+    })
+    expect(semMargem).toEqual({ ok: true })
+
+    const comMargem = validarBackup({
+      versao: 1, receitas: [{ id: 'rec_1', nomeNormalizado: 'brigadeiro', itens: [], margemPct: 200 }],
+      ingredientes: [], producoes: [],
+    })
+    expect(comMargem).toEqual({ ok: true })
+  })
 })
 
 describe('resumo', () => {
