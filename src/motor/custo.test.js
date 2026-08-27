@@ -376,6 +376,14 @@ describe('margemDoPreco', () => {
     expect(precoSugerido(65, margemDoPreco(65, 195))).toBe(195)
   })
 
+  // Com margem inteira a ida-e-volta fecha de qualquer jeito, e um teste assim passaria
+  // até numa versão que arredondasse por dentro. Aqui a margem é 33,33: arredondar para
+  // 33 devolveria 13300 em vez de 13333, e é isso que este teste existe para pegar.
+  it('a volta fecha mesmo quando a margem não é um número redondo', () => {
+    expect(margemDoPreco(10000, 13333)).toBeCloseTo(33.33, 10)
+    expect(precoSugerido(10000, margemDoPreco(10000, 13333))).toBe(13333)
+  })
+
   it('vender abaixo do custo dá margem negativa, que é informação e não erro', () => {
     expect(margemDoPreco(100, 70)).toBe(-30)
   })
@@ -413,5 +421,14 @@ describe('precoDoLucro', () => {
   it('sem custo ou sem lucro não há preço', () => {
     expect(precoDoLucro(null, 6500, 50)).toBe(null)
     expect(precoDoLucro(65, null, 50)).toBe(null)
+  })
+
+  // 6533/50 = 130,66 — o preço por unidade é inteiro em centavos, então nem todo lucro de
+  // fornada é alcançável na mosca. O app arredonda para o centavo mais próximo e o lucro
+  // real fica 6550. Isso não é defeito: é o que acontece quando 6533 não divide por 50.
+  it('lucro que não divide certo pelo rendimento cai no centavo mais próximo', () => {
+    const preco = precoDoLucro(65, 6533, 50)
+    expect(preco).toBe(196)
+    expect(lucroDaProducao(65, preco, 50)).toBe(6550)
   })
 })
