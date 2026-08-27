@@ -20,10 +20,9 @@ describe('primeiro uso', () => {
       await screen.findByRole('button', { name: /cadastrar meu primeiro doce/i }),
     )
 
-    // 2. O doce.
+    // 2. O doce. A margem saiu do cadastro na Task 11 — ela decide o preço na calculadora.
     await userEvent.type(screen.getByLabelText('Nome do doce'), 'Brigadeiro')
     await userEvent.type(screen.getByLabelText(/rende quantos/i), '50')
-    await userEvent.type(screen.getByLabelText(/margem/i), '200')
 
     // 3. Primeiro ingrediente, cadastrado ali mesmo, sem sair da folha.
     await userEvent.type(screen.getByLabelText('Ingrediente 1'), 'Leite condensado')
@@ -50,20 +49,32 @@ describe('primeiro uso', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Salvar doce' }))
 
-    // 5. De volta à tela principal, o preço já está lá — ela não digitou rendimento nenhum.
+    // 5. De volta à tela principal, o custo já está lá — ela não digitou rendimento nenhum.
     // R$ 13,00 de leite + R$ 2,60 de forminha = R$ 15,60, dividido por 50.
     await waitFor(() => {
       expect(screen.getByTestId('custo-total').textContent).toBe('R$ 15,60')
     })
     expect(screen.getByTestId('custo-cada').textContent).toBe('R$ 0,31')
-    expect(screen.getByLabelText(/vender a/i).value).toBe('0,93')
+    // Doce nunca vendido abre sem preço: a margem saiu do cadastro, e ela ainda não disse
+    // por quanto vende. É a primeira e única vez que ela digita isso para este doce.
+    expect(screen.getByLabelText(/vender a/i).value).toBe('')
 
-    // 6. Hoje rendeu diferente: o total não muda, o preço por unidade muda.
+    // 5b. Ela decide o preço. Margem e lucro saem sozinhos — é a conta que ela fazia no papel.
+    await userEvent.type(screen.getByLabelText(/vender a/i), '0,93')
+    expect(screen.getByLabelText(/margem/i).value).toBe('200')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('31,00')
+
+    // 6. Hoje rendeu diferente: o total não muda, o preço por unidade muda. O preço que ela
+    // digitou fica de pé; quem se move é a margem, que era 200 e agora é maior porque cada
+    // doce ficou mais barato de fazer.
     await userEvent.type(screen.getByLabelText(/rendeu quantos/i), '60')
     expect(screen.getByTestId('custo-total').textContent).toBe('R$ 15,60')
     expect(screen.getByTestId('custo-cada').textContent).toBe('R$ 0,26')
+    expect(screen.getByLabelText(/vender a/i).value).toBe('0,93')
+    expect(screen.getByLabelText(/margem/i).value).toBe('258')
+    expect(screen.getByLabelText(/lucro/i).value).toBe('40,20')
 
-    // 7. Salvar a produção grava o custo congelado.
+    // 7. Salvar a produção grava o custo e o preço congelados.
     await userEvent.click(screen.getByRole('button', { name: 'Salvar produção' }))
     await waitFor(async () => {
       const producoes = await listarProducoes()
@@ -72,6 +83,9 @@ describe('primeiro uso', () => {
       expect(producoes[0].rendimento).toBe(60)
       expect(producoes[0].custoTotalCent).toBe(1560)
       expect(producoes[0].custoUnitarioCent).toBe(26)
+      // O preço de venda entra congelado no histórico: é o que ela cobrou naquele dia,
+      // e não se move quando o ingrediente subir depois.
+      expect(producoes[0].precoVendaCent).toBe(93)
     })
 
     // 8. E aparece no histórico. A folha sobe por cima, mas a tela principal continua no
